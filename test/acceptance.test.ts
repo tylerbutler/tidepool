@@ -14,9 +14,22 @@ import {
 	createDOProviderContainerRuntimeFactory,
 	isInternalFluidContainer,
 } from "@fluidframework/fluid-static/internal";
+import type { IQuorum } from "@fluidframework/protocol-definitions";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAdapter, createClient, schema } from "./client.js";
 import * as helpers from "./runtime.js";
+
+function assertProposalQuorum(
+	quorum: object,
+): asserts quorum is Pick<IQuorum, "propose" | "get"> {
+	if (
+		!("propose" in quorum) ||
+		typeof quorum.propose !== "function" ||
+		!("get" in quorum) ||
+		typeof quorum.get !== "function"
+	)
+		throw new Error("Expected the runtime quorum proposal API");
+}
 
 describe("Tidepool", () => {
 	let environment: Awaited<ReturnType<typeof helpers.startRuntime>>;
@@ -59,6 +72,9 @@ describe("Tidepool", () => {
 				if (!isInternalFluidContainer(first.container)) {
 					throw new Error("Expected an internal Fluid container");
 				}
+				const quorum = first.container.container.getQuorum();
+				assertProposalQuorum(quorum);
+				await quorum.propose("tidepool-setting", { enabled: true });
 				const editedSequence =
 					first.container.container.deltaManager.lastSequenceNumber;
 				expect(editedSequence).toBeGreaterThan(0);
@@ -219,6 +235,11 @@ describe("Tidepool", () => {
 					if (!isInternalFluidContainer(third.container)) {
 						throw new Error("Expected an internal Fluid container");
 					}
+					const reloadedQuorum = third.container.container.getQuorum();
+					assertProposalQuorum(reloadedQuorum);
+					expect(reloadedQuorum.get("tidepool-setting")).toEqual({
+						enabled: true,
+					});
 					expect(
 						third.container.container.deltaManager.initialSequenceNumber,
 					).toBe(summarySequence);
@@ -257,6 +278,11 @@ describe("Tidepool", () => {
 			if (!isInternalFluidContainer(restarted.container)) {
 				throw new Error("Expected an internal Fluid container");
 			}
+			const restartedQuorum = restarted.container.container.getQuorum();
+			assertProposalQuorum(restartedQuorum);
+			expect(restartedQuorum.get("tidepool-setting")).toEqual({
+				enabled: true,
+			});
 			expect(
 				restarted.container.container.deltaManager.initialSequenceNumber,
 			).toBe(summarySequence);

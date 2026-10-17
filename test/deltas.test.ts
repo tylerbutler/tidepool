@@ -28,6 +28,35 @@ async function waitForSequence(document: string, sn: number) {
 		.toBe(sn);
 }
 
+it("loads deltas for a document named session through the official driver", async () => {
+	const { base } = environment;
+	await createDocument(base, "session");
+	const peer = await connect(base, "session");
+	try {
+		peer.connection.submit([
+			{
+				clientSequenceNumber: 1,
+				referenceSequenceNumber: 0,
+				type: "op",
+				contents: "reserved-name",
+			},
+		]);
+		await waitForSequence("session", 2);
+		const storage = await peer.service.connectToDeltaStorage();
+		const stream = storage.fetchMessages(1, undefined);
+		const contents: unknown[] = [];
+		for (;;) {
+			const chunk = await stream.read();
+			if (chunk.done) break;
+			contents.push(...chunk.value.map((op) => op.contents));
+		}
+		expect(contents).toContain("reserved-name");
+	} finally {
+		peer.connection.dispose();
+		peer.service.dispose();
+	}
+});
+
 it("streams complete ranges larger than 4 MiB through the unmodified delta driver", async () => {
 	const document = "large-delta-range";
 	await createDocument(environment.base, document);

@@ -52,6 +52,11 @@ The DO restores client records and the sequence checkpoint from SQLite. It
 does not replay the operation log on each wake. Hibernation keeps existing
 writer memberships; connection loss and reset require catch-up/reconnection.
 
+Each document stores its initial protocol checkpoint. Summary preparation
+replays proposals and minimum-sequence advances from that checkpoint through
+the summary reference. The snapshot includes pending proposals and agreed
+quorum settings at that reference; later approvals remain in the delta tail.
+
 ## Local setup
 
 Install Node.js 24, pnpm, and Gleam 1.19.2 or later. Erlang/OTP is necessary
@@ -97,6 +102,11 @@ Wrangler runs with local bindings by default. Do not use `--remote` for local
 tests. To reset local documents, stop Wrangler and remove only this app's
 `.wrangler/state/` directory in this repository. Keep that directory to preserve them.
 
+Older persisted documents without the initial protocol checkpoint return
+HTTP 409 and require recreation. There is no state migration or automatic
+deletion. Any local reset must be an explicit action; do not reset cloud data
+as part of an upgrade.
+
 ## Commands
 
 Run these from the repository root:
@@ -123,6 +133,7 @@ checks without cloud credentials. It does not deploy the Worker.
 | Inbound WebSocket frame | 1 MiB of UTF-8 text |
 | Stored encoded operation | 1 MiB, including sequenced metadata |
 | HTTP request body | 16 MiB, enforced during streaming reads |
+| Version-list aggregate reads / encoded response | 16 MiB each |
 | Logical document budget | 64 MiB for operations, commits, and reserved R2 content |
 | Cleanup reserve | 1 MiB of that budget, unavailable to new content/normal operations |
 | Connections per document | 128, including unauthenticated sockets |
@@ -141,6 +152,10 @@ exclusive `from` and `to` sequence bounds. The service streams the complete
 requested range at the request's checkpoint; it does not return short pages
 that the official driver could mistake for the end of history. The driver can
 continue its sequence-based pagination. The service retains the complete log.
+Version lists count commit reads, including the search for an older version,
+and requested snapshot reads against one shared read limit. The separate
+response limit includes UTF-8 encoding, array punctuation, and generated URLs.
+Either overflow returns HTTP 413 without a partial version list.
 
 The budget counts encoded payload bytes, not SQLite page/index overhead.
 Each document reserves its reachable R2 content even when another document
@@ -155,11 +170,20 @@ Failed transactions do not advance the durable sequence or client CSN. Slow or
 failed peer sends close the socket for reconnect/catch-up. The service closes
 expired tokens and peers that miss the pong deadline.
 
+Temporary storage/runtime failures include a one-second retry hint in the
+fields expected by the official driver. HTTP responses also include
+`Retry-After: 1`. Authorization, input, configuration, and hard-limit errors
+do not receive these temporary-error hints.
+
 Origins must match `ALLOWED_ORIGIN`, or the request origin when that binding
 is absent. Requests without an Origin header still require document tokens.
 Query parameters route socket upgrades; the DO verifies identity and scopes
 when `connect_document` arrives. Anonymous upgrades cannot create a document
 or join its membership.
+
+Member `user` and `scopes` come from the verified token; member `mode` comes
+from admission. Client metadata cannot override these fields. The 8 KiB
+metadata limit applies after the server replaces them.
 
 ## Local evidence and remaining risk
 
@@ -176,7 +200,8 @@ and nonzero checkpoint, adds later edits, and loads a third container. It checks
 that the snapshot includes the early edits and that bootstrap starts at that
 checkpoint with a nonempty delta tail. It then restarts the local runtime
 against the same SQLite/R2 directories and checks the accepted commit and
-SharedMap state again.
+SharedMap state again. An agreed quorum setting must also survive summary
+loading and the runtime restart.
 
 One local macOS loopback run with two writers and 50 sequential 128-byte payloads
 reported p50 fan-out latency of 1.33 ms and p95 of 1.72 ms. The first operation

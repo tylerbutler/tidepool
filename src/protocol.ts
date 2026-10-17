@@ -1,3 +1,10 @@
+import {
+	type Result,
+	Result$Error$0,
+	Result$isError,
+	Result$isOk,
+	Result$Ok$0,
+} from "../protocol/build/dev/javascript/prelude.mjs";
 import * as gleam from "../protocol/build/dev/javascript/tidepool_protocol/adapter.mjs";
 import { HttpError, integer, record, text } from "./common.js";
 
@@ -10,6 +17,26 @@ export interface Operation {
 	referenceSequenceNumber: number;
 	type: string;
 	contents: unknown;
+}
+
+export interface ProtocolEvent {
+	sn: number;
+	msn: number;
+	kind: string;
+	contents: string;
+}
+
+function unwrap<T>(value: Result<T, string>): T {
+	const ok = Result$Ok$0(value);
+	if (Result$isError(value)) {
+		const error = Result$Error$0(value);
+		if (typeof error !== "string")
+			throw new Error("Invalid Gleam quorum error");
+		throw new HttpError(400, error);
+	}
+	if (!Result$isOk(value)) throw new Error("Invalid Gleam quorum result");
+	if (ok === undefined) throw new Error("Invalid Gleam quorum result");
+	return ok;
 }
 
 export function result(encoded: string): unknown {
@@ -34,6 +61,29 @@ export function operation(value: unknown): Operation {
 }
 
 export const protocol = {
+	quorum(values: unknown, sequence: number, events: Iterable<ProtocolEvent>) {
+		let state = unwrap(gleam.quorum_new(JSON.stringify(values), sequence));
+		for (const event of events) {
+			state = unwrap(
+				gleam.quorum_step(
+					state,
+					event.sn,
+					event.msn,
+					event.kind,
+					event.contents,
+				),
+			);
+		}
+		const snapshot = record(JSON.parse(gleam.quorum_snapshot(state)));
+		if (!Array.isArray(snapshot.proposals) || !Array.isArray(snapshot.values))
+			throw new Error("Invalid Gleam quorum snapshot");
+		return {
+			sequenceNumber: integer(snapshot.sequenceNumber),
+			minimumSequenceNumber: integer(snapshot.minimumSequenceNumber),
+			proposals: snapshot.proposals as unknown[],
+			values: snapshot.values as unknown[],
+		};
+	},
 	frame(input: string): { event: string; args: unknown[] } {
 		const value = record(result(gleam.frame(input)));
 		return {

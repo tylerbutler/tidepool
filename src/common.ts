@@ -4,6 +4,7 @@ export const MAX_DOCUMENT_BYTES = 64 * 1_048_576;
 export const MAX_CLIENTS = 128;
 export const PING_INTERVAL_MS = 10_000;
 export const PING_TIMEOUT_MS = 20_000;
+export const RETRY_AFTER_MS = 1000;
 
 export interface Env {
 	DOCUMENTS: DurableObjectNamespace;
@@ -90,7 +91,8 @@ export function errorResponse(error: unknown): Response {
 	}
 	console.error("Tidepool request failed", error);
 	return Response.json(
-		{ message: "Storage or runtime failure" },
-		{ status: 503 },
+		// The pinned REST driver reads retryAfter in milliseconds for 503 errors.
+		{ message: "Storage or runtime failure", retryAfter: RETRY_AFTER_MS },
+		{ status: 503, headers: { "Retry-After": String(RETRY_AFTER_MS / 1000) } },
 	);
 }

@@ -5,13 +5,15 @@ import {
 	MAX_FRAME_BYTES,
 } from "./common.js";
 import type { HistorianStore } from "./historian.js";
-import { type Operation, operation } from "./protocol.js";
+import { type Operation, operation, type ProtocolEvent } from "./protocol.js";
 
 interface State {
 	sn: number;
 	msn: number;
 	handle: string;
 	summarySn: number;
+	initialHandle: string;
+	initialSn: number;
 	used: number;
 	created: boolean;
 }
@@ -58,9 +60,25 @@ export class Storage implements HistorianStore {
 		const row = this.sql
 			.exec<{ body: string }>("SELECT body FROM state WHERE id=1")
 			.toArray()[0];
-		return row
-			? (JSON.parse(row.body) as State)
-			: { sn: 0, msn: 0, handle: "", summarySn: 0, used: 0, created: false };
+		if (row) {
+			const state = JSON.parse(row.body) as State;
+			if (
+				typeof state.initialHandle !== "string" ||
+				!Number.isSafeInteger(state.initialSn)
+			)
+				throw new HttpError(409, "Document state requires recreation");
+			return state;
+		}
+		return {
+			sn: 0,
+			msn: 0,
+			handle: "",
+			summarySn: 0,
+			initialHandle: "",
+			initialSn: 0,
+			used: 0,
+			created: false,
+		};
 	}
 
 	save(state: State): void {
@@ -193,6 +211,19 @@ export class Storage implements HistorianStore {
 			output.unshift(operation(JSON.parse(row.body)));
 		}
 		return output;
+	}
+
+	protocolEvents(from: number, to: number): Iterable<ProtocolEvent> {
+		return this.sql.exec<{
+			sn: number;
+			msn: number;
+			kind: string;
+			contents: string;
+		}>(
+			"SELECT sn,json_extract(body,'$.minimumSequenceNumber') AS msn,json_extract(body,'$.type') AS kind,CASE WHEN json_extract(body,'$.type')='propose' THEN json_quote(json_extract(body,'$.contents')) ELSE 'null' END AS contents FROM ops WHERE sn>? AND sn<=? ORDER BY sn",
+			from,
+			to,
+		);
 	}
 
 	membersAt(reference: number): unknown[] {

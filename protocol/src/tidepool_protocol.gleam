@@ -1,7 +1,10 @@
+import adapter
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/json
+import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import spillway/connect_document
 import spillway/sequencing
 import spillway/session_logic
@@ -69,5 +72,49 @@ pub fn main() -> Nil {
     session_logic.build_summary_ack("summary", 1, 0, 1) |> json.to_string
   let assert Ok(2) =
     json.parse(wire_ack, decode.at(["sequenceNumber"], decode.int))
+
+  let assert Ok(quorum) =
+    adapter.quorum_new("[[\"initial\",{\"value\":true}]]", 0)
+  let assert Ok(quorum) =
+    adapter.quorum_step(
+      quorum,
+      1,
+      0,
+      "propose",
+      "\"{\\\"key\\\":\\\"setting\\\",\\\"value\\\":1}\"",
+    )
+  let assert Ok(quorum) =
+    adapter.quorum_step(
+      quorum,
+      2,
+      0,
+      "propose",
+      "{\"key\":\"setting\",\"value\":2}",
+    )
+  let pending = adapter.quorum_snapshot(quorum)
+  let assert Ok(2) =
+    json.parse(pending, decode.at(["proposals"], decode.list(decode.dynamic)))
+    |> result.map(list.length)
+  let assert Ok(quorum) = adapter.quorum_step(quorum, 3, 2, "noop", "null")
+  let approved = adapter.quorum_snapshot(quorum)
+  let assert Ok([]) =
+    json.parse(approved, decode.at(["proposals"], decode.list(decode.dynamic)))
+  let assert Ok(values) =
+    json.parse(approved, decode.at(["values"], decode.list(decode.dynamic)))
+  let assert 2 = list.length(values)
+  let assert Ok(setting) =
+    list.find(values, fn(value) {
+      decode.run(value, decode.at([0], decode.string)) == Ok("setting")
+    })
+  let assert Ok(2) =
+    decode.run(setting, decode.at([1], decode.at(["value"], decode.int)))
+  let assert Ok(3) =
+    decode.run(
+      setting,
+      decode.at([1], decode.at(["approvalSequenceNumber"], decode.int)),
+    )
+  let assert Error(_) =
+    adapter.quorum_step(quorum, 4, 2, "propose", "{\"value\":3}")
+  let assert Error(_) = adapter.quorum_step(quorum, 5, 2, "noop", "null")
   Nil
 }

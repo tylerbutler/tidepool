@@ -81,8 +81,25 @@ export default {
 				} else if (path[0] === "repos") {
 					document = text(claims.documentId);
 				} else {
-					document = text(path[2] === "session" ? path[3] : path[2]);
-					if (claims.documentId !== document)
+					const documents: string[] = [];
+					if (
+						(path[0] === "deltas" && path.length === 3) ||
+						(path[0] === "documents" &&
+							(path.length === 3 ||
+								(path.length === 4 && path[3] === "deltas")))
+					)
+						documents.push(text(path[2]));
+					if (
+						path[0] === "documents" &&
+						path.length === 4 &&
+						path[2] === "session"
+					)
+						documents.push(text(path[3]));
+					if (documents.length === 0)
+						throw new HttpError(404, "Unsupported document route");
+					// Discovery for "deltas" and deltas for "session" share a URL.
+					document = text(claims.documentId);
+					if (!documents.includes(document))
 						throw new HttpError(401, "Document identity mismatch");
 				}
 			}

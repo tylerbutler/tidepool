@@ -7,6 +7,8 @@ import {
 	MAX_DOCUMENT_BYTES,
 	MAX_FRAME_BYTES,
 	MAX_HTTP_BYTES,
+	record,
+	text,
 } from "../src/common.js";
 import { protocol } from "../src/protocol.js";
 import {
@@ -34,7 +36,7 @@ async function inspect(document: string) {
 	);
 }
 
-async function rawSocket(document: string) {
+async function openSocket(document: string) {
 	const response = await environment.runtime.dispatchFetch(
 		`${environment.base}/socket.io/?EIO=4&transport=websocket&tenantId=fluid&documentId=${document}`,
 		{ headers: { Upgrade: "websocket" } },
@@ -47,20 +49,33 @@ async function rawSocket(document: string) {
 	);
 	socket.accept();
 	socket.send("40");
+	return { socket, received };
+}
+
+async function rawSocket(
+	document: string,
+	options: {
+		mode?: "read" | "write";
+		client?: Record<string, unknown>;
+		jwt?: string;
+	} = {},
+) {
+	const { socket, received } = await openSocket(document);
 	socket.send(
 		`42${JSON.stringify([
 			"connect_document",
 			{
 				tenantId: "fluid",
 				id: document,
-				token: await token(document),
-				mode: "write",
+				token: options.jwt ?? (await token(document)),
+				mode: options.mode ?? "write",
 				client: {
 					mode: "write",
 					details: { capabilities: { interactive: true } },
 					permission: [],
 					scopes: [],
 					user: { id: "raw" },
+					...options.client,
 				},
 			},
 		])}`,
@@ -74,9 +89,135 @@ async function rawSocket(document: string) {
 		v.startsWith('42["connect_document_success"'),
 	);
 	if (!success) throw new Error("Missing connect response");
-	const parsed = JSON.parse(success.slice(2)) as [string, { clientId: string }];
-	return { socket, received, id: parsed[1].clientId };
+	const parsed = protocol.frame(success);
+	const details = record(parsed.args[0]);
+	return { socket, received, id: text(details.clientId), details };
 }
+
+it("rejects unsupported persisted state without rewriting or deleting it", async () => {
+	const document = "unsupported-state";
+	await createDocument(environment.base, document);
+	const sql = await inspect(document);
+	await sql.exec(
+		"UPDATE state SET body=json_remove(body,'$.initialHandle','$.initialSn')",
+	);
+	const previous = await sql.exec("SELECT body FROM state");
+	const response = await api(
+		environment.base,
+		document,
+		`/documents/fluid/${document}`,
+	);
+	expect(response.status).toBe(409);
+	expect(await response.json()).toEqual({
+		message: "Document state requires recreation",
+	});
+	expect(await sql.exec("SELECT body FROM state")).toEqual(previous);
+});
+
+it("uses verified identity, scopes, and mode for joins, signals, stored clients, and rosters", async () => {
+	const document = "trusted-membership";
+	await createDocument(environment.base, document);
+	const writer = await rawSocket(document, {
+		client: { user: { id: "impersonated" }, scopes: ["admin"], mode: "read" },
+	});
+	let reader: Awaited<ReturnType<typeof rawSocket>> | undefined;
+	try {
+		const expected = {
+			user: { id: "tidepool-test-user", name: "Tidepool Test User" },
+			scopes: ["doc:read", "doc:write", "summary:write"],
+			mode: "write",
+			details: { capabilities: { interactive: true } },
+			permission: [],
+		};
+		const rows = await (await inspect(document)).exec<{ detail: string }>(
+			"SELECT detail FROM clients WHERE id=?",
+			writer.id,
+		);
+		expect(JSON.parse(text(rows[0]?.detail))).toEqual(expected);
+		const join = (await deltas(environment.base, document)).find(
+			(op) => op.type === "join",
+		);
+		expect(record(JSON.parse(text(join?.data))).detail).toEqual(expected);
+		reader = await rawSocket(document, {
+			mode: "read",
+			jwt: await token(document, ["doc:read"]),
+			client: {
+				mode: "write",
+				scopes: ["doc:write"],
+				user: { id: "other-victim" },
+			},
+		});
+		expect(reader.details.initialClients).toContainEqual({
+			clientId: writer.id,
+			client: expected,
+		});
+		const signals = reader.details.initialSignals;
+		if (!Array.isArray(signals)) throw new Error("Missing initial signals");
+		expect(record(signals[0]).clientId).toBe(null);
+		expect(JSON.parse(text(record(signals[0]).content))).toEqual({
+			type: "join",
+			content: {
+				clientId: reader.id,
+				client: { ...expected, mode: "read", scopes: ["doc:read"] },
+			},
+		});
+		const readerRows = await (await inspect(document)).exec<{ detail: string }>(
+			"SELECT detail FROM clients WHERE id=?",
+			reader.id,
+		);
+		expect(JSON.parse(text(readerRows[0]?.detail))).toEqual({
+			...expected,
+			mode: "read",
+			scopes: ["doc:read"],
+		});
+	} finally {
+		reader?.socket.close();
+		writer.socket.close();
+	}
+});
+
+it("enforces the metadata limit after replacing untrusted identity fields", async () => {
+	const document = "canonical-metadata-limit";
+	await createDocument(environment.base, document);
+	const client = {
+		mode: "write",
+		user: { id: "x" },
+		scopes: [],
+		details: { padding: "" },
+	};
+	client.details.padding = "x".repeat(8191 - bytes(JSON.stringify(client)));
+	expect(bytes(JSON.stringify(client))).toBe(8191);
+	const { socket, received } = await openSocket(document);
+	try {
+		socket.send(
+			`42${JSON.stringify([
+				"connect_document",
+				{
+					tenantId: "fluid",
+					id: document,
+					token: await token(document),
+					mode: "write",
+					client,
+				},
+			])}`,
+		);
+		await expect
+			.poll(() =>
+				received.some(
+					(frame) =>
+						frame.startsWith('42["connect_document_error"') &&
+						frame.includes('"code":413'),
+				),
+			)
+			.toBe(true);
+		expect(await deltas(environment.base, document)).toEqual([]);
+		expect(
+			await (await inspect(document)).exec("SELECT * FROM clients"),
+		).toEqual([]);
+	} finally {
+		socket.close();
+	}
+});
 
 it("accepts exactly the stored message limit and rejects one byte more without an extra op", async () => {
 	const document = "message-boundary";
@@ -159,9 +300,9 @@ it("rolls back sequence and client state when SQLite rejects an operation", asyn
 		await storage.exec(
 			"CREATE TRIGGER fail_write BEFORE INSERT ON ops WHEN json_extract(NEW.body,'$.type')='op' BEGIN SELECT RAISE(FAIL, 'injected storage failure'); END",
 		);
-		let nacks = 0;
-		peer.connection.on("nack", () => {
-			nacks++;
+		const nacks: unknown[] = [];
+		peer.connection.on("nack", (_document, messages) => {
+			nacks.push(...messages);
 		});
 		const input = {
 			clientSequenceNumber: 1,
@@ -170,7 +311,11 @@ it("rolls back sequence and client state when SQLite rejects an operation", asyn
 			contents: "must-persist",
 		};
 		peer.connection.submit([input]);
-		await expect.poll(() => nacks).toBe(1);
+		await expect.poll(() => nacks.length).toBe(1);
+		expect(record(nacks[0]).content).toMatchObject({
+			code: 503,
+			retryAfter: 1,
+		});
 		expect(
 			(await deltas(environment.base, document)).filter((o) => o.type === "op"),
 		).toEqual([]);

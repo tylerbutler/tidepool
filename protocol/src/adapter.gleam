@@ -1,6 +1,7 @@
 import gleam/dict
 import gleam/dynamic.{type Dynamic}
 import gleam/dynamic/decode
+import gleam/int
 import gleam/json.{type Json}
 import gleam/list
 import gleam/option.{None, Some}
@@ -145,6 +146,122 @@ fn op_decoder() -> decode.Decoder(Submitted) {
   ))
 }
 
+fn proposal_decoder() -> decode.Decoder(#(String, Json)) {
+  use key <- decode.field("key", decode.string)
+  use value <- decode.field("value", json_value())
+  decode.success(#(key, value))
+}
+
+fn proposal(contents: String) -> Result(#(String, Json), String) {
+  let contents = case json.parse(contents, decode.string) {
+    Ok(encoded) -> encoded
+    Error(_) -> contents
+  }
+  json.parse(contents, proposal_decoder())
+  |> result.replace_error("Malformed quorum proposal")
+}
+
+pub opaque type Quorum {
+  Quorum(
+    sequence: Int,
+    minimum: Int,
+    proposals: dict.Dict(Int, #(String, Json)),
+    values: dict.Dict(String, Json),
+  )
+}
+
+pub fn quorum_new(values: String, sequence: Int) -> Result(Quorum, String) {
+  let decoder = {
+    use key <- decode.then(decode.at([0], decode.string))
+    use value <- decode.then(decode.at([1], json_value()))
+    decode.success(#(key, value))
+  }
+  use values <- result.try(
+    json.parse(values, decode.list(decoder))
+    |> result.replace_error("Invalid initial quorum values"),
+  )
+  Ok(Quorum(sequence, sequence, dict.new(), dict.from_list(values)))
+}
+
+pub fn quorum_step(
+  state: Quorum,
+  sequence: Int,
+  minimum: Int,
+  kind: String,
+  contents: String,
+) -> Result(Quorum, String) {
+  use Nil <- result.try(
+    case
+      sequence == state.sequence + 1
+      && minimum >= state.minimum
+      && minimum <= sequence
+    {
+      True -> Ok(Nil)
+      False -> Error("Invalid protocol replay sequence")
+    },
+  )
+  use pending <- result.try(case kind {
+    "propose" ->
+      proposal(contents)
+      |> result.map(dict.insert(state.proposals, sequence, _))
+    _ -> Ok(state.proposals)
+  })
+  let #(pending, values) = case minimum > state.minimum {
+    False -> #(pending, state.values)
+    True ->
+      pending
+      |> dict.to_list
+      |> list.filter(fn(pair) { pair.0 <= minimum })
+      |> list.sort(fn(a, b) { int.compare(a.0, b.0) })
+      |> list.fold(#(pending, state.values), fn(acc, pair) {
+        let #(pending, values) = acc
+        let #(sn, #(key, value)) = pair
+        let approved =
+          json.object([
+            #("key", json.string(key)),
+            #("value", value),
+            #("sequenceNumber", json.int(sn)),
+            #("approvalSequenceNumber", json.int(sequence)),
+            #("commitSequenceNumber", json.int(-1)),
+          ])
+        #(dict.delete(pending, sn), dict.insert(values, key, approved))
+      })
+  }
+  Ok(Quorum(sequence, minimum, pending, values))
+}
+
+pub fn quorum_snapshot(state: Quorum) -> String {
+  json.object([
+    #("sequenceNumber", json.int(state.sequence)),
+    #("minimumSequenceNumber", json.int(state.minimum)),
+    #(
+      "proposals",
+      state.proposals
+        |> dict.to_list
+        |> list.sort(fn(a, b) { int.compare(a.0, b.0) })
+        |> json.array(fn(pair) {
+          let #(sn, #(key, value)) = pair
+          json.preprocessed_array([
+            json.int(sn),
+            json.object([
+              #("sequenceNumber", json.int(sn)),
+              #("key", json.string(key)),
+              #("value", value),
+            ]),
+            json.preprocessed_array([]),
+          ])
+        }),
+    ),
+    #(
+      "values",
+      json.array(dict.to_list(state.values), fn(pair) {
+        json.preprocessed_array([json.string(pair.0), pair.1])
+      }),
+    ),
+  ])
+  |> json.to_string
+}
+
 pub fn assign(
   checkpoint: String,
   client: String,
@@ -185,6 +302,11 @@ pub fn assign(
       validation.validate_message_size(size, 1_048_576)
       |> result.map_error(validation.format_error),
     )
+    use Nil <- result.try(case op.kind {
+      "propose" ->
+        proposal(json.to_string(op.contents)) |> result.map(fn(_) { Nil })
+      _ -> Ok(Nil)
+    })
     use assigned <- result.try(
       sequencing.assign_sequence_number(state, client, op.csn, op.rsn)
       |> result.replace_error("Invalid client or reference sequence number"),

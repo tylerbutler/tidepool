@@ -10,6 +10,7 @@ import {
 	MAX_FRAME_BYTES,
 	PING_INTERVAL_MS,
 	PING_TIMEOUT_MS,
+	RETRY_AFTER_MS,
 	readJson,
 	record,
 	text,
@@ -192,19 +193,28 @@ export class DocumentDO extends DurableObject<Env> {
 					error instanceof HttpError
 						? error.message
 						: "Storage or runtime failure";
+				const retryAfterMs =
+					error instanceof HttpError ? undefined : RETRY_AFTER_MS;
 				console.error("Document event rejected", { event, status, error });
 				if (event === "submitOp") {
 					this.send(socket, "nack", attachment(socket).document, [
 						{
 							operation: null,
 							sequenceNumber: this.store.state().sn,
-							content: { code: status, type: "BadRequestError", message },
+							content: {
+								code: status,
+								type: "BadRequestError",
+								message,
+								retryAfter:
+									retryAfterMs === undefined ? undefined : retryAfterMs / 1000,
+							},
 						},
 					]);
 				} else {
 					this.send(socket, "connect_document_error", {
 						code: status,
 						message,
+						retryAfterMs,
 					});
 					this.disconnect(socket);
 					socket.close(status === 413 ? 1009 : 1008, message.slice(0, 100));
@@ -236,7 +246,12 @@ export class DocumentDO extends DurableObject<Env> {
 			throw new HttpError(404, "Document does not exist");
 		this.reconcile(a.document);
 		const id = crypto.randomUUID();
-		const supplied = record(raw.client);
+		const supplied = {
+			...record(raw.client),
+			user: claims.user,
+			scopes: claims.scopes,
+			mode: join.mode,
+		};
 		const detail = JSON.stringify(supplied);
 		if (bytes(detail) > 8192)
 			throw new HttpError(413, "Client metadata exceeds limit");
@@ -361,6 +376,7 @@ export class DocumentDO extends DurableObject<Env> {
 					state.msn,
 					this.store.membersAt(op.referenceSequenceNumber),
 					state.handle,
+					{ handle: state.initialHandle, sequenceNumber: state.initialSn },
 				);
 			} catch (error) {
 				if (!(error instanceof HttpError) || error.status >= 500) throw error;
@@ -579,6 +595,8 @@ export class DocumentDO extends DurableObject<Env> {
 					msn: initial.sequenceNumber,
 					handle: initial.handle,
 					summarySn: initial.sequenceNumber,
+					initialHandle: initial.handle,
+					initialSn: initial.sequenceNumber,
 				});
 				if (initial.handle)
 					this.store.setRef(`refs/heads/${document}`, initial.handle);
@@ -595,13 +613,18 @@ export class DocumentDO extends DurableObject<Env> {
 		if (
 			request.method === "GET" &&
 			path[0] === "documents" &&
-			path[2] === "session"
+			path.length === 4 &&
+			path[2] === "session" &&
+			path[3] === document
 		)
 			return Response.json(this.session(url.origin, tenant));
 		if (
 			request.method === "GET" &&
-			(path[0] === "deltas" ||
-				(path[0] === "documents" && path[3] === "deltas"))
+			((path[0] === "deltas" && path.length === 3 && path[2] === document) ||
+				(path[0] === "documents" &&
+					path.length === 4 &&
+					path[2] === document &&
+					path[3] === "deltas"))
 		) {
 			const from = integer(Number(url.searchParams.get("from") ?? 0));
 			const to = url.searchParams.has("to")
@@ -611,7 +634,12 @@ export class DocumentDO extends DurableObject<Env> {
 				headers: { "Content-Type": "application/json" },
 			});
 		}
-		if (request.method === "GET" && path[0] === "documents")
+		if (
+			request.method === "GET" &&
+			path[0] === "documents" &&
+			path.length === 3 &&
+			path[2] === document
+		)
 			return Response.json({
 				id: document,
 				tenantId: tenant,

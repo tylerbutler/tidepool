@@ -6,6 +6,7 @@ import {
 	record,
 	text,
 } from "./common";
+import { type ProtocolEvent, protocol } from "./protocol.js";
 
 export interface HistorianStore {
 	getCommit(sha: string): string | undefined;
@@ -15,6 +16,7 @@ export interface HistorianStore {
 	listRefs(): Array<{ ref: string; sha: string }>;
 	/** Atomically charge each immutable key once per document, including shared content and failed uploads. */
 	reserveContent(key: string, size: number): void;
+	protocolEvents(from: number, to: number): Iterable<ProtocolEvent>;
 }
 
 export interface HistorianBucket {
@@ -439,18 +441,26 @@ export class Historian {
 		let current: string | undefined = head;
 		const seen = new Set<string>();
 		const result: unknown[] = [];
-		const budget = { nodes: 0 };
+		const budget = { nodes: 0, bytes: 0 };
+		let responseBytes = 2;
 		let found = requested === this.document;
 		while (current && result.length < count) {
 			if (seen.has(current)) fail("Cycle in published history");
 			seen.add(current);
 			if (seen.size > MAX_NODES)
 				throw new HttpError(413, "Commit history exceeds traversal limit");
-			const commit = (await this.load("commits", current)) as Commit;
+			const commit = (await this.load("commits", current, budget)) as Commit;
 			if (current === requested) found = true;
 			if (found) {
 				await this.validateGraph("trees", commit.tree, budget);
-				result.push(this.commitResponse(current, commit, true));
+				const version = this.commitResponse(current, commit, true);
+				responseBytes += bytes(json(version)) + (result.length > 0 ? 1 : 0);
+				if (responseBytes > MAX_HTTP_BYTES)
+					throw new HttpError(
+						413,
+						"Version response exceeds the aggregate byte limit",
+					);
+				result.push(version);
 			}
 			current = commit.parents[0];
 		}
@@ -501,8 +511,7 @@ export class Historian {
 		reference: number,
 		minimum: number,
 		members: unknown[],
-		retained?: Tree,
-		values: unknown = [],
+		quorum: { proposals: unknown[]; values: unknown[] },
 	): Promise<string> {
 		const entries: Entry[] = [];
 		for (const [path, value] of [
@@ -511,21 +520,14 @@ export class Historian {
 				{ minimumSequenceNumber: minimum, sequenceNumber: reference },
 			],
 			["quorumMembers", members],
-			["quorumProposals", []],
-			["quorumValues", values],
+			["quorumProposals", quorum.proposals],
+			["quorumValues", quorum.values],
 		] as const) {
-			const previous = retained?.tree.find((entry) => entry.path === path);
-			if ((path === "quorumValues" || path === "quorumProposals") && previous) {
-				if (previous.type !== "blob") fail("Invalid protocol blob");
-				await this.load("blobs", previous.sha);
-				entries.push(previous);
-			} else {
-				const id = await this.create("blobs", {
-					content: json(value),
-					encoding: "utf-8",
-				});
-				entries.push(this.entry(path, "blob", id));
-			}
+			const id = await this.create("blobs", {
+				content: json(value),
+				encoding: "utf-8",
+			});
+			entries.push(this.entry(path, "blob", id));
 		}
 		return this.create("trees", { tree: entries });
 	}
@@ -557,18 +559,18 @@ export class Historian {
 			return { handle: "", sequenceNumber: 0 };
 		json(body);
 		const sequenceNumber = integer(body.sequenceNumber ?? 0);
+		const quorum = protocol.quorum(body.values ?? [], sequenceNumber, []);
 		const app = await this.summaryTree(body.summary, { nodes: 0 });
-		const protocol = await this.protocol(
+		const protocolTree = await this.protocol(
 			sequenceNumber,
 			sequenceNumber,
 			[],
-			undefined,
-			array(body.values ?? []),
+			quorum,
 		);
 		const root = await this.create("trees", {
 			tree: [
 				this.entry(".app", "tree", app),
-				this.entry(".protocol", "tree", protocol),
+				this.entry(".protocol", "tree", protocolTree),
 			],
 		});
 		return {
@@ -583,6 +585,7 @@ export class Historian {
 		minimum: number,
 		members: unknown[],
 		head: string,
+		initial: { handle: string; sequenceNumber: number },
 	): Promise<string> {
 		integer(reference);
 		integer(minimum);
@@ -611,29 +614,46 @@ export class Historian {
 				"Summary head and parents must match the published head",
 			);
 		}
-		let tree = sha(summary.handle);
-		await this.validateGraph("trees", tree, { nodes: 0 });
-		if (head) {
-			const parent = (await this.load("commits", head)) as Commit;
-			const root = (await this.load("trees", parent.tree)) as Tree;
+		const app = sha(summary.handle);
+		await this.validateGraph("trees", app, { nodes: 0 });
+		integer(initial.sequenceNumber);
+		if (reference < initial.sequenceNumber)
+			fail("Summary reference precedes the initial checkpoint");
+		let values: unknown = [];
+		if (initial.handle) {
+			const baseline = (await this.load("commits", initial.handle)) as Commit;
+			const root = (await this.load("trees", baseline.tree)) as Tree;
 			const entry = root.tree.find((item) => item.path === ".protocol");
-			if (entry) {
-				if (entry.type !== "tree") fail("Invalid parent protocol tree");
-				const retained = (await this.load("trees", entry.sha)) as Tree;
-				const protocol = await this.protocol(
-					reference,
-					minimum,
-					members,
-					retained,
-				);
-				tree = await this.create("trees", {
-					tree: [
-						this.entry(".app", "tree", tree),
-						this.entry(".protocol", "tree", protocol),
-					],
-				});
-			}
+			if (!entry || entry.type !== "tree")
+				throw new Error("Initial protocol tree is missing");
+			const tree = (await this.load("trees", entry.sha)) as Tree;
+			const value = tree.tree.find((item) => item.path === "quorumValues");
+			if (!value || value.type !== "blob")
+				throw new Error("Initial quorum values are missing");
+			const blob = (await this.load("blobs", value.sha)) as BlobBody;
+			values = parse(
+				new TextDecoder("utf-8", { fatal: true }).decode(blobBytes(blob)),
+			);
 		}
+		const quorum = protocol.quorum(
+			values,
+			initial.sequenceNumber,
+			this.store.protocolEvents(initial.sequenceNumber, reference),
+		);
+		if (quorum.sequenceNumber !== reference)
+			throw new Error("Protocol history is incomplete");
+		const protocolTree = await this.protocol(
+			reference,
+			quorum.minimumSequenceNumber,
+			members,
+			quorum,
+		);
+		const tree = await this.create("trees", {
+			tree: [
+				this.entry(".app", "tree", app),
+				this.entry(".protocol", "tree", protocolTree),
+			],
+		});
 		return this.newCommit(tree, expected, string(summary.message ?? ""));
 	}
 }

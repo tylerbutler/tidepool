@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
+import { integer, record } from "../src/common.js";
 import {
 	api,
 	connect,
@@ -192,6 +193,7 @@ it("rejects invalid CSNs and read-only submissions without advancing the durable
 	const writer = await connect(base, "validation");
 	const reader = await connect(base, "validation", "read", ["doc:read"]);
 	try {
+		const before = await deltas(base, "validation");
 		const messages: unknown[] = [];
 		writer.connection.on("nack", (_doc, nacks) => messages.push(...nacks));
 		reader.connection.on("nack", (_doc, nacks) => messages.push(...nacks));
@@ -211,10 +213,34 @@ it("rejects invalid CSNs and read-only submissions without advancing the durable
 				contents: "read",
 			},
 		]);
-		await expect.poll(() => messages.length).toBe(2);
-		expect(
-			(await deltas(base, "validation")).filter((o) => o.type === "op"),
-		).toEqual([]);
+		writer.connection.submit([
+			{
+				clientSequenceNumber: 1,
+				referenceSequenceNumber: 0,
+				type: "propose",
+				contents: JSON.stringify({ value: "missing-key" }),
+			},
+		]);
+		await expect.poll(() => messages.length).toBe(3);
+		expect(await deltas(base, "validation")).toEqual(before);
+		for (const message of messages)
+			expect(record(message).content).not.toHaveProperty("retryAfter");
+		writer.connection.submit([
+			{
+				clientSequenceNumber: 1,
+				referenceSequenceNumber: 0,
+				type: "op",
+				contents: "valid-after-rejection",
+			},
+		]);
+		await expect
+			.poll(async () =>
+				(await deltas(base, "validation")).find((op) => op.type === "op"),
+			)
+			.toMatchObject({
+				clientSequenceNumber: 1,
+				sequenceNumber: integer(before.at(-1)?.sequenceNumber) + 1,
+			});
 	} finally {
 		writer.connection.dispose();
 		writer.service.dispose();

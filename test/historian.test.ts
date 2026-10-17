@@ -1,16 +1,18 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { HttpError, MAX_HTTP_BYTES } from "../src/common";
+import { bytes, HttpError, MAX_HTTP_BYTES } from "../src/common";
 import {
 	Historian,
 	type HistorianBucket,
 	type HistorianStore,
 } from "../src/historian";
+import type { ProtocolEvent } from "../src/protocol.js";
 
 class MemoryStore implements HistorianStore {
 	readonly commits = new Map<string, string>();
 	readonly refs = new Map<string, string>();
 	readonly content = new Map<string, number>();
+	readonly events: ProtocolEvent[] = [];
 	contentUsed = 0;
 	contentLimit = 63 * 1024 * 1024;
 	getCommit(sha: string) {
@@ -27,6 +29,9 @@ class MemoryStore implements HistorianStore {
 	}
 	listRefs() {
 		return Array.from(this.refs, ([ref, sha]) => ({ ref, sha }));
+	}
+	protocolEvents(from: number, to: number) {
+		return this.events.filter((event) => event.sn > from && event.sn <= to);
 	}
 	reserveContent(key: string, size: number) {
 		const previous = this.content.get(key);
@@ -76,6 +81,9 @@ function setup(
 }
 
 const author = { name: "Test", email: "test@example.com", date: "123" };
+const emptyProtocol = { handle: "", sequenceNumber: 0 };
+const utf8Padding = (size: number) =>
+	"é".repeat(Math.floor(size / 2)) + "x".repeat(size % 2);
 const directHash = (value: unknown) =>
 	createHash("sha1").update(JSON.stringify(value)).digest("hex");
 const entry = (path: string, type: "blob" | "tree", sha: string) => ({
@@ -400,6 +408,7 @@ describe("Historian objects", () => {
 							0,
 							[],
 							"",
+							emptyProtocol,
 						);
 		const writes = first.bucket.putCalls;
 		second.store.contentLimit = 0;
@@ -412,12 +421,13 @@ describe("Historian objects", () => {
 		await reference();
 		for (const [key, size] of first.store.content)
 			expect(second.store.content.get(key)).toBe(size);
-		expect(second.store.content.size).toBe(operation === "tree" ? 3 : 2);
-		expect(first.bucket.putCalls).toBe(writes + (operation === "tree" ? 1 : 0));
+		const added = operation === "summary" ? 4 : operation === "tree" ? 1 : 0;
+		expect(second.store.content.size).toBe(2 + added);
+		expect(first.bucket.putCalls).toBe(writes + added);
 		const used = second.store.contentUsed;
 		await reference();
 		expect(second.store.contentUsed).toBe(used);
-		expect(first.bucket.putCalls).toBe(writes + (operation === "tree" ? 1 : 0));
+		expect(first.bucket.putCalls).toBe(writes + added);
 	});
 
 	it("validates every referenced child before reserving any shared content", async () => {
@@ -688,35 +698,27 @@ describe("Historian publication", () => {
 		expect(store.listRefs()).toEqual([]);
 	});
 
-	it("prepares but does not publish summaries, preserving quorum values and proposals", async () => {
+	it("replays approved and pending proposals from the initial checkpoint without publishing", async () => {
 		const { historian, store } = setup();
 		const initial = await historian.initialize({
 			summary: { entries: [] },
 			values: [["key", { value: 1 }]],
 		});
-		const first = await protocolBlobs(historian, initial.handle);
-		const proposals = await historian.create("blobs", {
-			content: JSON.stringify([[2, { key: "proposal", value: 3 }]]),
-		});
-		const changedProtocol = await historian.create("trees", {
-			tree: first.protocol.tree.map((item) =>
-				entry(
-					item.path,
-					"blob",
-					item.path === "quorumProposals" ? proposals : item.sha,
-				),
-			),
-		});
-		const root = await historian.create("trees", {
-			tree: first.root.tree.map((item) =>
-				entry(
-					item.path,
-					"tree",
-					item.path === ".protocol" ? changedProtocol : item.sha,
-				),
-			),
-		});
-		const head = await commit(historian, root, [initial.handle]);
+		store.events.push(
+			...Array.from({ length: 10 }, (_, index) => {
+				const sn = index + 1;
+				return {
+					sn,
+					msn: Math.min(sn - 1, 5),
+					kind: sn === 2 || sn === 8 ? "propose" : "noop",
+					contents: JSON.stringify({
+						key: sn === 2 ? "proposal" : "pending",
+						value: sn === 2 ? 3 : 4,
+					}),
+				};
+			}),
+		);
+		const head = initial.handle;
 		store.setRef("refs/heads/doc", head);
 		const app = await historian.create("trees", { tree: [] });
 		const members = [
@@ -736,14 +738,29 @@ describe("Historian publication", () => {
 			5,
 			members,
 			head,
+			initial,
 		);
 		const next = await protocolBlobs(historian, prepared);
 		expect(next.root.tree.find((item) => item.path === ".app")?.sha).toBe(app);
 		expect(next.blobs).toEqual({
 			attributes: { minimumSequenceNumber: 5, sequenceNumber: 10 },
 			quorumMembers: members,
-			quorumProposals: [[2, { key: "proposal", value: 3 }]],
-			quorumValues: [["key", { value: 1 }]],
+			quorumProposals: [
+				[8, { sequenceNumber: 8, key: "pending", value: 4 }, []],
+			],
+			quorumValues: expect.arrayContaining([
+				["key", { value: 1 }],
+				[
+					"proposal",
+					{
+						key: "proposal",
+						value: 3,
+						sequenceNumber: 2,
+						approvalSequenceNumber: 3,
+						commitSequenceNumber: -1,
+					},
+				],
+			]),
 		});
 		expect(
 			((await historian.get("commits", prepared)) as RestCommit).parents,
@@ -754,7 +771,7 @@ describe("Historian publication", () => {
 		});
 	});
 
-	it("uses a submitted tree unchanged for a summary without a parent", async () => {
+	it("builds protocol state for a first summary without an initial snapshot", async () => {
 		const { historian } = setup();
 		const tree = await historian.create("trees", { tree: [] });
 		const prepared = await historian.prepareSummary(
@@ -763,10 +780,73 @@ describe("Historian publication", () => {
 			0,
 			[],
 			"",
+			emptyProtocol,
 		);
-		expect(
-			((await historian.get("commits", prepared)) as RestCommit).tree.sha,
-		).toBe(tree);
+		const { root, blobs } = await protocolBlobs(historian, prepared);
+		expect(root.tree.find((item) => item.path === ".app")?.sha).toBe(tree);
+		expect(blobs).toEqual({
+			attributes: { sequenceNumber: 0, minimumSequenceNumber: 0 },
+			quorumMembers: [],
+			quorumProposals: [],
+			quorumValues: [],
+		});
+	});
+
+	it("keeps a proposal pending at the reference and approves it in a later summary", async () => {
+		const { historian, store } = setup();
+		const initial = await historian.initialize({ summary: { entries: [] } });
+		store.setRef("refs/heads/doc", initial.handle);
+		const app = await historian.create("trees", { tree: [] });
+		store.events.push(
+			{
+				sn: 1,
+				msn: 0,
+				kind: "propose",
+				contents: JSON.stringify({ key: "setting", value: 1 }),
+			},
+			{ sn: 2, msn: 1, kind: "noop", contents: "null" },
+		);
+		const pending = await historian.prepareSummary(
+			{ handle: app, head: initial.handle, parents: [initial.handle] },
+			1,
+			1,
+			[],
+			initial.handle,
+			initial,
+		);
+		expect((await protocolBlobs(historian, pending)).blobs).toEqual({
+			attributes: { sequenceNumber: 1, minimumSequenceNumber: 0 },
+			quorumMembers: [],
+			quorumProposals: [
+				[1, { sequenceNumber: 1, key: "setting", value: 1 }, []],
+			],
+			quorumValues: [],
+		});
+		store.setRef("refs/heads/doc", pending);
+		const approved = await historian.prepareSummary(
+			{ handle: app, head: pending, parents: [pending] },
+			2,
+			1,
+			[],
+			pending,
+			initial,
+		);
+		expect((await protocolBlobs(historian, approved)).blobs).toMatchObject({
+			attributes: { sequenceNumber: 2, minimumSequenceNumber: 1 },
+			quorumProposals: [],
+			quorumValues: [
+				[
+					"setting",
+					{
+						key: "setting",
+						value: 1,
+						sequenceNumber: 1,
+						approvalSequenceNumber: 2,
+						commitSequenceNumber: -1,
+					},
+				],
+			],
+		});
 	});
 
 	it("rejects incompatible heads, parents, handles, and invalid quorum members", async () => {
@@ -785,11 +865,11 @@ describe("Historian publication", () => {
 			{ ...valid, parents: [initial.handle, initial.handle] },
 		]) {
 			await expect(
-				historian.prepareSummary(input, 1, 0, [], initial.handle),
+				historian.prepareSummary(input, 1, 0, [], initial.handle, initial),
 			).rejects.toMatchObject({ status: 409 });
 		}
 		await expect(
-			historian.prepareSummary(valid, 1, 0, [], ""),
+			historian.prepareSummary(valid, 1, 0, [], "", initial),
 		).rejects.toMatchObject({ status: 409 });
 		await expect(
 			historian.prepareSummary(
@@ -798,10 +878,11 @@ describe("Historian publication", () => {
 				0,
 				[],
 				initial.handle,
+				initial,
 			),
 		).rejects.toMatchObject({ status: 404 });
 		await expect(
-			historian.prepareSummary(valid, 1, 2, [], initial.handle),
+			historian.prepareSummary(valid, 1, 2, [], initial.handle, initial),
 		).rejects.toMatchObject({ status: 400 });
 		await expect(
 			historian.prepareSummary(
@@ -810,6 +891,7 @@ describe("Historian publication", () => {
 				0,
 				[["client", { client: {}, sequenceNumber: 2 }]],
 				initial.handle,
+				initial,
 			),
 		).rejects.toMatchObject({ status: 400 });
 	});
@@ -905,6 +987,100 @@ describe("Historian publication", () => {
 		]);
 		await expect(historian.versions("doc", 1)).rejects.toMatchObject({
 			status: 404,
+		});
+	});
+
+	it("accepts exactly the version read budget and rejects one more UTF-8 byte", async () => {
+		const { historian, store } = setup();
+		const commitSize = bytes(
+			JSON.stringify({
+				tree: "a".repeat(40),
+				parents: [],
+				message: "summary",
+				author,
+			}),
+		);
+		const treeOverhead = bytes(JSON.stringify({ tree: [], padding: "" }));
+		for (const extra of [0, 1]) {
+			const tree = await historian.create("trees", {
+				tree: [],
+				padding: utf8Padding(
+					MAX_HTTP_BYTES - commitSize - treeOverhead + extra,
+				),
+			});
+			const head = await commit(historian, tree);
+			store.setRef("refs/heads/doc", head);
+			if (extra === 0) {
+				expect(await historian.versions("doc", 1)).toMatchObject([
+					{ sha: head },
+				]);
+			} else {
+				await expect(historian.versions("doc", 1)).rejects.toMatchObject({
+					status: 413,
+					message: "Object reads exceed the aggregate byte limit",
+				});
+			}
+		}
+	});
+
+	it("bounds the complete version response independently of read bytes", async () => {
+		const { historian, store } = setup();
+		const tree = await historian.create("trees", { tree: [] });
+		async function chain(padding: number) {
+			let head = "";
+			let body = { tree, author, message: "", parents: [] as string[] };
+			for (let i = 0; i < 18; i++) {
+				body = {
+					tree,
+					author,
+					message: utf8Padding(
+						Math.floor(padding / 18) + (i < padding % 18 ? 1 : 0),
+					),
+					parents: head ? [head] : [],
+				};
+				head = await historian.create("commits", body);
+			}
+			store.setRef("refs/heads/doc", head);
+			return { head, body };
+		}
+		await chain(0);
+		const overhead = bytes(JSON.stringify(await historian.versions("doc", 18)));
+		const exact = await chain(MAX_HTTP_BYTES - overhead);
+		const versions = await historian.versions("doc", 18);
+		expect(bytes(JSON.stringify(versions))).toBe(MAX_HTTP_BYTES);
+		const overflow = await historian.create("commits", {
+			...exact.body,
+			message: `${exact.body.message}x`,
+		});
+		store.setRef("refs/heads/doc", overflow);
+		await expect(historian.versions("doc", 18)).rejects.toMatchObject({
+			status: 413,
+			message: "Version response exceeds the aggregate byte limit",
+		});
+	});
+
+	it("charges commits skipped while seeking an older version to the read budget", async () => {
+		const { historian, store } = setup();
+		const tree = await historian.create("trees", { tree: [] });
+		const commits: string[] = [];
+		for (let i = 0; i < 18; i++) {
+			const head = commits.at(-1);
+			commits.push(
+				await historian.create("commits", {
+					tree,
+					author,
+					parents: head ? [head] : [],
+					message: "x".repeat(950_000),
+				}),
+			);
+		}
+		const first = commits[0];
+		const head = commits.at(-1);
+		if (!first || !head) throw new Error("Missing version history");
+		store.setRef("refs/heads/doc", head);
+		await expect(historian.versions(first, 1)).rejects.toMatchObject({
+			status: 413,
+			message: "Object reads exceed the aggregate byte limit",
 		});
 	});
 });
