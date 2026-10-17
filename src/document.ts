@@ -7,6 +7,7 @@ import {
 	HttpError,
 	integer,
 	MAX_CLIENTS,
+	MAX_DOCUMENT_BYTES,
 	MAX_FRAME_BYTES,
 	PING_INTERVAL_MS,
 	PING_TIMEOUT_MS,
@@ -17,7 +18,7 @@ import {
 } from "./common.js";
 import { Historian } from "./historian.js";
 import { type Operation, operation, protocol } from "./protocol.js";
-import { type ClientRow, Storage } from "./storage.js";
+import { CLEANUP_RESERVE, type ClientRow, Storage } from "./storage.js";
 
 interface Attachment {
 	tenant: string;
@@ -521,16 +522,21 @@ export class DocumentDO extends DurableObject<Env> {
 	}
 
 	private async scheduleAlarm(): Promise<void> {
-		const deadlines = this.ctx
+		const sockets = this.ctx
 			.getWebSockets()
 			.filter((socket) => socket.readyState === WebSocket.OPEN)
-			.flatMap((socket) => {
-				const a = attachment(socket);
-				const expires = a.id ? this.store.client(a.id)?.expires : undefined;
-				return [a.nextPing, a.pongDue, a.admissionDue, expires ?? 0].filter(
-					(v) => v > 0,
-				);
-			});
+			.map(attachment);
+		const expirations = new Map<string, number>(
+			sockets.some((a) => a.id)
+				? this.store.clients().map((client) => [client.id, client.expires])
+				: [],
+		);
+		const deadlines = sockets.flatMap((a) => {
+			const expires = a.id ? expirations.get(a.id) : undefined;
+			return [a.nextPing, a.pongDue, a.admissionDue, expires ?? 0].filter(
+				(v) => v > 0,
+			);
+		});
 		if (deadlines.length > 0)
 			await this.ctx.storage.setAlarm(
 				Math.max(Date.now(), Math.min(...deadlines)),
@@ -639,12 +645,23 @@ export class DocumentDO extends DurableObject<Env> {
 			path[0] === "documents" &&
 			path.length === 3 &&
 			path[2] === document
-		)
+		) {
+			const state = this.store.state();
 			return Response.json({
 				id: document,
 				tenantId: tenant,
-				sequenceNumber: this.store.state().sn,
+				sequenceNumber: state.sn,
+				storage: {
+					usedBytes: state.used,
+					budgetBytes: MAX_DOCUMENT_BYTES,
+					cleanupReserveBytes: CLEANUP_RESERVE,
+					remainingWriteBytes: Math.max(
+						0,
+						MAX_DOCUMENT_BYTES - CLEANUP_RESERVE - state.used,
+					),
+				},
 			});
+		}
 		if (
 			path[0] === "repos" &&
 			path[2] === "commits" &&

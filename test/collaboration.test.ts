@@ -165,6 +165,100 @@ it("retains accepted operations across object reset and reconnect", async () => 
 	}
 });
 
+it("uses the retry index after hibernation and rejects conflicting retries without advancing state", async () => {
+	const { base, runtime } = environment;
+	const document = "indexed-retries";
+	await createDocument(base, document);
+	const peers: Awaited<ReturnType<typeof connect>>[] = [];
+	try {
+		const first = await connect(base, document);
+		peers.push(first);
+		const second = await connect(base, document);
+		peers.push(second);
+		let accepted = 0;
+		let historyReady = false;
+		const nacks: unknown[] = [];
+		first.connection.on("op", (_document, operations) => {
+			for (const op of operations) {
+				if (
+					op.clientId === first.connection.clientId &&
+					op.clientSequenceNumber === 1
+				)
+					accepted++;
+				if (
+					op.clientId === second.connection.clientId &&
+					op.clientSequenceNumber === 2000
+				)
+					historyReady = true;
+			}
+		});
+		first.connection.on("nack", (_document, messages) =>
+			nacks.push(...messages),
+		);
+		const input = {
+			clientSequenceNumber: 1,
+			referenceSequenceNumber: 0,
+			type: "op",
+			contents: "retry-target",
+		};
+		first.connection.submit([input]);
+		await expect.poll(() => accepted).toBe(1);
+		for (let offset = 0; offset < 2000; offset += 100) {
+			second.connection.submit(
+				Array.from({ length: 100 }, (_, index) => ({
+					clientSequenceNumber: offset + index + 1,
+					referenceSequenceNumber: 0,
+					type: "op",
+					contents: `history:${offset + index + 1}`,
+				})),
+			);
+		}
+		await expect.poll(() => historyReady).toBe(true);
+		await runtime.unsafeEvictDurableObject("tidepool-tests", "DocumentDO", {
+			name: JSON.stringify(["fluid", document]),
+			webSockets: "hibernate",
+		});
+		expect(
+			(await api(base, document, `/documents/fluid/${document}`)).status,
+		).toBe(200);
+		const sql = await runtime.unsafeGetDurableObjectStorage(
+			"tidepool-tests",
+			"DocumentDO",
+			{ name: JSON.stringify(["fluid", document]) },
+		);
+		const plan = await sql.exec<{ detail: string }>(
+			"EXPLAIN QUERY PLAN SELECT body FROM ops WHERE json_extract(body,'$.clientId')=? AND json_extract(body,'$.clientSequenceNumber')=? ORDER BY sn DESC LIMIT 1",
+			first.connection.clientId,
+			1,
+		);
+		expect(
+			plan.some((row) =>
+				row.detail.includes("USING INDEX ops_client_sequence"),
+			),
+		).toBe(true);
+		expect(plan.some((row) => /SCAN ops|TEMP B-TREE/.test(row.detail))).toBe(
+			false,
+		);
+		const before = await sql.exec("SELECT body FROM state");
+		const clientsBefore = await sql.exec("SELECT * FROM clients ORDER BY id");
+		first.connection.submit([input]);
+		await expect.poll(() => accepted).toBe(2);
+		expect(await sql.exec("SELECT body FROM state")).toEqual(before);
+		first.connection.submit([{ ...input, contents: "conflicting-retry" }]);
+		await expect.poll(() => nacks.length).toBe(1);
+		expect(record(nacks[0]).content).toMatchObject({ code: 400 });
+		expect(await sql.exec("SELECT body FROM state")).toEqual(before);
+		expect(await sql.exec("SELECT * FROM clients ORDER BY id")).toEqual(
+			clientsBefore,
+		);
+	} finally {
+		for (const peer of peers) {
+			peer.connection.dispose();
+			peer.service.dispose();
+		}
+	}
+});
+
 it("rejects unauthenticated, foreign-document and insufficient-scope REST requests", async () => {
 	const { base } = environment;
 	await createDocument(base, "auth");

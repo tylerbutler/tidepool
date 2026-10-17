@@ -28,7 +28,7 @@ export interface ClientRow extends Record<string, SqlStorageValue> {
 	scopes: string;
 }
 
-const CLEANUP_RESERVE = 1_048_576;
+export const CLEANUP_RESERVE = 1_048_576;
 
 export class Storage implements HistorianStore {
 	private readonly sql: SqlStorage;
@@ -41,6 +41,9 @@ export class Storage implements HistorianStore {
 		);
 		sql.exec(
 			"CREATE TABLE IF NOT EXISTS ops (sn INTEGER PRIMARY KEY, body TEXT NOT NULL)",
+		);
+		sql.exec(
+			"CREATE INDEX IF NOT EXISTS ops_client_sequence ON ops (json_extract(body,'$.clientId'),json_extract(body,'$.clientSequenceNumber'),sn DESC)",
 		);
 		sql.exec(
 			"CREATE TABLE IF NOT EXISTS clients (id TEXT PRIMARY KEY, mode TEXT, csn INTEGER, rsn INTEGER, detail TEXT, expires INTEGER, scopes TEXT)",

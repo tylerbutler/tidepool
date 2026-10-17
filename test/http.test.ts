@@ -1,8 +1,10 @@
 import { SignJWT } from "jose";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { MAX_CLIENTS } from "../src/common.js";
+import { MAX_CLIENTS, MAX_DOCUMENT_BYTES } from "../src/common.js";
+import { CLEANUP_RESERVE } from "../src/storage.js";
 import {
 	api,
+	connect,
 	createDocument,
 	createTestClient,
 	secret,
@@ -77,6 +79,77 @@ it("returns authorization errors with CORS only for an allowed origin", async ()
 	expect(preflight.headers.get("Access-Control-Allow-Headers")).toContain(
 		"Authorization",
 	);
+});
+
+it("reports authenticated logical capacity as operations and content consume the budget", async () => {
+	const { base, runtime } = environment;
+	const document = "capacity";
+	const path = `/documents/fluid/${document}`;
+	await createDocument(base, document);
+	const metadata = () => api(base, document, path, undefined, ["doc:read"]);
+	expect(await (await metadata()).json()).toEqual({
+		id: document,
+		tenantId: "fluid",
+		sequenceNumber: 0,
+		storage: {
+			usedBytes: 0,
+			budgetBytes: MAX_DOCUMENT_BYTES,
+			cleanupReserveBytes: CLEANUP_RESERVE,
+			remainingWriteBytes: MAX_DOCUMENT_BYTES - CLEANUP_RESERVE,
+		},
+	});
+	expect((await fetch(`${base}${path}`)).status).toBe(401);
+	expect((await api(base, "foreign", path)).status).toBe(401);
+	const peer = await connect(base, document);
+	try {
+		peer.connection.submit([
+			{
+				clientSequenceNumber: 1,
+				referenceSequenceNumber: 0,
+				type: "op",
+				contents: "capacity-edit",
+			},
+		]);
+		const sql = await runtime.unsafeGetDurableObjectStorage(
+			"tidepool-tests",
+			"DocumentDO",
+			{ name: JSON.stringify(["fluid", document]) },
+		);
+		await expect
+			.poll(
+				async () =>
+					(
+						await sql.exec<{ sn: number }>(
+							"SELECT json_extract(body,'$.sn') AS sn FROM state",
+						)
+					)[0]?.sn,
+			)
+			.toBe(2);
+		const before = (await (await metadata()).json()) as {
+			storage: { usedBytes: number };
+		};
+		const upload = await api(base, document, "/repos/fluid/git/blobs", {
+			content: "capacity-content",
+			encoding: "utf-8",
+		});
+		expect(upload.status).toBe(201);
+		const rows = await sql.exec<{ used: number; sn: number }>(
+			"SELECT json_extract(body,'$.used') AS used,json_extract(body,'$.sn') AS sn FROM state",
+		);
+		const state = rows[0];
+		if (!state) throw new Error("Missing document state");
+		expect(state.used).toBeGreaterThan(before.storage.usedBytes);
+		expect(await (await metadata()).json()).toMatchObject({
+			sequenceNumber: state.sn,
+			storage: {
+				usedBytes: state.used,
+				remainingWriteBytes: MAX_DOCUMENT_BYTES - CLEANUP_RESERVE - state.used,
+			},
+		});
+	} finally {
+		peer.connection.dispose();
+		peer.service.dispose();
+	}
 });
 
 it("makes temporary admission and REST storage failures retryable in the official driver", async () => {

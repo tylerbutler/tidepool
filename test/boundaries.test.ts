@@ -374,6 +374,22 @@ it("accepts the exact document budget and rejects one byte more, retaining clean
 			"SELECT json_extract(body,'$.used') AS used FROM state",
 		);
 		expect(rows[0]?.used).toBe(cap);
+		const capacity = async () =>
+			record(
+				record(
+					await (
+						await api(
+							environment.base,
+							document,
+							`/documents/fluid/${document}`,
+						)
+					).json(),
+				).storage,
+			);
+		expect(await capacity()).toMatchObject({
+			usedBytes: cap,
+			remainingWriteBytes: 0,
+		});
 		const next = { ...input, clientSequenceNumber: 2 };
 		const nextOp = protocol.assign(
 			{ sn: 2, msn: 0, clients: [{ id: peer.id, csn: 1, rsn: 0 }] },
@@ -387,6 +403,7 @@ it("accepts the exact document budget and rejects one byte more, retaining clean
 			"UPDATE state SET body=json_set(body,'$.used',?) WHERE id=1",
 			beforeRejected,
 		);
+		const beforeCapacity = await capacity();
 		peer.socket.send(`42${JSON.stringify(["submitOp", peer.id, [[next]]])}`);
 		await expect
 			.poll(() => peer.received.some((v) => v.includes('"code":507')))
@@ -395,6 +412,7 @@ it("accepts the exact document budget and rejects one byte more, retaining clean
 			"SELECT json_extract(body,'$.used') AS used,json_extract(body,'$.sn') AS sn FROM state",
 		);
 		expect(afterRejected[0]).toEqual({ used: beforeRejected, sn: 2 });
+		expect(await capacity()).toEqual(beforeCapacity);
 		await storage.exec(
 			"UPDATE state SET body=json_set(body,'$.used',?) WHERE id=1",
 			cap,
@@ -408,6 +426,9 @@ it("accepts the exact document budget and rejects one byte more, retaining clean
 					).length,
 			)
 			.toBe(1);
+		const afterCleanup = await capacity();
+		expect(afterCleanup.usedBytes).toBeGreaterThan(cap);
+		expect(afterCleanup.remainingWriteBytes).toBe(0);
 	} finally {
 		if (peer.socket.readyState === 1) peer.socket.close();
 	}

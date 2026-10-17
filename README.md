@@ -14,10 +14,10 @@ Tidepool began as the Cloudflare prototype in
 its own build, test helpers, and official-client acceptance tests. You do not
 need a Floodgate checkout or its client packages.
 
-The prototype runs in local workerd. Tests cover SharedMap collaboration,
+The test suite runs in local workerd. Tests cover SharedMap collaboration,
 an updated summary and delta-tail reload, actual local object hibernation,
 reset/reconnect, and storage failures. No cloud resources or deployment are
-part of these tests. Live Cloudflare behavior and billing remain unverified.
+part of these tests. Cloud load limits, placement, and billing remain unverified.
 
 ## Architecture
 
@@ -51,6 +51,9 @@ an ack or head without the corresponding durable operations.
 The DO restores client records and the sequence checkpoint from SQLite. It
 does not replay the operation log on each wake. Hibernation keeps existing
 writer memberships; connection loss and reset require catch-up/reconnection.
+Heartbeat scheduling reads client records at most once per pass, rather than
+once per authenticated socket. It reads no client records when no authenticated
+sockets remain open.
 
 Each document stores its initial protocol checkpoint. Summary preparation
 replays proposals and minimum-sequence advances from that checkpoint through
@@ -89,7 +92,8 @@ Wrangler listens on `http://127.0.0.1:8787` and keeps local state under
 `TENANT_ID=fluid`, and sign HS256 tokens with the same secret. Tokens need
 `tenantId`, `documentId`, `user.id`, `scopes`, `iat`, and `exp`. Use an empty
 `documentId` for server-generated document creation. Only trusted application
-code should mint tokens; this prototype has no public token endpoint.
+code should mint tokens. The document Worker has no token endpoint; the
+optional [Access-protected token Worker](#token-service) runs separately.
 
 Set the client's orderer, delta stream, and storage origins to the Worker.
 The [test client](test/client.ts) shows the complete official Loader and
@@ -113,7 +117,8 @@ Run these from the repository root:
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm build` | Gleam JavaScript build and Wrangler dry-run bundle |
+| `pnpm build` | Gleam JavaScript build and dry-run bundles for both Workers |
+| `pnpm build:auth` | Token Worker dry-run bundle, without Gleam or R2 |
 | `pnpm typecheck` | Strict TypeScript boundary check |
 | `pnpm check` / `pnpm format` | Biome and Gleam formatting |
 | `pnpm test:protocol` | Assert protocol behavior on JavaScript |
@@ -158,11 +163,39 @@ response limit includes UTF-8 encoding, array punctuation, and generated URLs.
 Either overflow returns HTTP 413 without a partial version list.
 
 The budget counts encoded payload bytes, not SQLite page/index overhead.
+The duplicate-retry index adds physical SQLite storage and an index write for
+each appended operation; the logical budget does not include that overhead.
 Each document reserves its reachable R2 content even when another document
 already uploaded it. Retries of the same immutable key do not add another
 charge. A failed R2 write keeps its reservation, so a retry can use it; abandoned
 uploads and staged commits still consume budget. Conflicting encoded sizes for
 the same reservation return an error. There is no garbage collector.
+
+With a document token that includes `doc:read`,
+`GET /documents/:tenant/:document` returns document identity, sequence number,
+and logical capacity. For an empty document:
+
+```json
+{
+  "id": "example",
+  "tenantId": "fluid",
+  "sequenceNumber": 0,
+  "storage": {
+    "usedBytes": 0,
+    "budgetBytes": 67108864,
+    "cleanupReserveBytes": 1048576,
+    "remainingWriteBytes": 66060288
+  }
+}
+```
+
+`usedBytes` includes encoded operations, commits, and reserved R2 content.
+`remainingWriteBytes` is
+`max(0, budgetBytes - cleanupReserveBytes - usedBytes)`. Cleanup can consume the
+reserve after normal writes reach their limit; remaining write capacity stays
+at zero. These values do not measure physical SQLite or R2 allocation. A positive
+remaining value does not guarantee that an operation or summary will fit: encoded
+metadata, related content, and the other limits still apply.
 
 Oversize input returns HTTP 413, a nack, or close code 1009, as applicable.
 Budget exhaustion returns 507 or a nack. Storage failures return 503 or a nack.
@@ -209,6 +242,26 @@ after local hibernation took 3.14 ms. The 50 operations plus two joins occupied
 18,272 logical bytes. `pnpm measure:local` reproduces this workload; these
 numbers are observations, not capacity targets or live Cloudflare latency.
 
+`pnpm measure:local` also runs a 32-client fan-out case and a duplicate-retry
+case. Both fan-out cases send 50 sequential 128-byte payloads and record arrival
+at one designated observer, including one hibernated wake. They check delivery
+to all clients. The retry case measures 50 retries of one accepted operation
+after another writer adds 2,000 operations. Setup stays outside the latency
+samples; retries must leave the durable sequence and logical usage unchanged.
+
+One Linux loopback comparison before and after the scheduling and index changes
+reported these values, with 50 samples per workload:
+
+| Workload | p50 before | p50 after | p95 before | p95 after |
+| --- | --- | --- | --- | --- |
+| 2-client fan-out | 1.24 ms | 1.10 ms | 1.89 ms | 1.84 ms |
+| 32-client fan-out | 3.39 ms | 3.26 ms | 4.21 ms | 4.06 ms |
+| Retry after 2,000 operations | 2.08 ms | 0.43 ms | 3.11 ms | 0.73 ms |
+
+Logical usage matched before and after for each workload. These are single-run
+local observations, not a general speedup guarantee or a Cloudflare cost estimate.
+The measurement tests enforce delivery and state invariants, not latency targets.
+
 An idle connected client still needs a server ping and client pong about six
 times per minute. Alarms and pong events wake the DO. Hibernation correctness
 does not establish idle billing savings; this prototype preserves the driver's
@@ -221,10 +274,113 @@ It serializes summary preparation with document socket events, so slow R2
 work can delay edits. Live placement, platform limits under load, and cost need
 a separate deployment test.
 
+## Token service
+
+`src/token-worker.ts` is a separate HTTP-only Worker configured by
+`wrangler.auth.jsonc`. It needs no Durable Object or R2 bindings. It uses the
+existing `jose` dependency to mint the HS256 tokens that the document Worker
+accepts.
+
+Protect the token service hostname with a self-hosted
+[Cloudflare Access application](https://developers.cloudflare.com/workers/configuration/cloudflare-access/).
+Configure an explicit email allowlist and the desired login provider, such as
+[email one-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/).
+All users admitted by this Access application can create, read, edit, and
+summarize any document in the configured tenant. There are no per-document
+permissions.
+
+Set these bindings before using the service:
+
+| Binding | Purpose |
+| --- | --- |
+| `TENANT_ID` | The same tenant as the document Worker |
+| `JWT_SECRET` | A secret of at least 32 UTF-8 bytes, shared with the document Worker |
+| `ACCESS_AUDIENCE` | The Access application's AUD tag, set in `wrangler.auth.jsonc` variables |
+| `ALLOWED_ORIGIN` | Optional browser app origin; defaults to the token service origin |
+
+The Worker requires Cloudflare's verified `ctx.access` context and a matching
+audience. It derives `user.id` from the Access user's stable `user_uuid`. Forged
+Access headers, another application's context, and requests that bypass Access
+cannot mint tokens. Missing signing or audience configuration disables minting.
+Invoke this Worker directly through its protected hostname; Access does not
+forward `ctx.access` through service bindings or static-asset router Workers.
+
+After signing in at the token service hostname, send:
+
+```http
+POST /tokens
+Content-Type: application/json
+
+{"documentId":"example"}
+```
+
+Use `{"documentId":""}` for a server-generated document creation token. The
+request body may contain only `documentId`; callers cannot choose identity,
+tenant, scopes, or token lifetime. The body limit is 2 KiB, enforced while
+reading the stream. Document IDs may contain at most 256 UTF-8 bytes.
+
+The response contains `{ "jwt": "...", "expiresAt": 1234567890 }`, where
+`expiresAt` is a Unix timestamp in seconds. Tokens expire after 15 minutes and
+grant `doc:read`, `doc:write`, and `summary:write`. Responses use
+`Cache-Control: no-store`. Keep tokens out of logs and URLs.
+
+A browser client's Fluid token provider can call the endpoint from both
+`fetchOrdererToken` and `fetchStorageToken`:
+
+```ts
+async function fetchToken(_tenantId: string, documentId = "") {
+  const response = await fetch("https://<token-host>/tokens", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ documentId }),
+  });
+  if (!response.ok) throw new Error(`Token request failed: ${response.status}`);
+  return response.json();
+}
+
+const tokenProvider = {
+  fetchOrdererToken: fetchToken,
+  fetchStorageToken: fetchToken,
+};
+```
+
+Users must sign in at the issuer hostname before making these requests. For
+another browser origin, set `ALLOWED_ORIGIN` and configure Access to
+[bypass OPTIONS preflights to the Worker](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/cors/).
+The Worker handles preflights without minting tokens and permits credentials
+only for the allowed origin. Cross-origin Access cookies remain subject to
+browser restrictions; use a same-origin token route when integrating a browser
+app. The document Worker closes expired sockets, so clients must obtain fresh
+tokens when they reconnect.
+
+### Deploying the token Worker
+
+Deployment requires approval and the intended Cloudflare account. It does not
+enable R2 or deploy the document Worker.
+
+1. Create the Access application, its allowlist, and login provider in Cloudflare
+   Zero Trust. Set `ACCESS_AUDIENCE` to the application's AUD tag.
+2. Set `JWT_SECRET` with
+   `pnpm exec wrangler secret put JWT_SECRET --config wrangler.auth.jsonc`.
+   Use the same secret when deploying the document Worker. Keep a secure backup;
+   Cloudflare does not return stored Worker secrets.
+3. Run `pnpm build:auth`, then
+   `pnpm exec wrangler deploy --config wrangler.auth.jsonc`.
+4. Sign in at the deployed hostname, check `/health`, and request a token.
+   A direct request without verified Access context must not return a JWT.
+
+Wrangler's normal OAuth login can deploy Workers but may lack Access write
+permissions. API provisioning needs `Access: Apps and Policies Write` and, for
+email PIN setup, `Access: Organizations, Identity Providers, and Groups Write`.
+If Access setup is unavailable, the Worker can deploy with minting disabled
+until its audience is configured. Local JWT tests do not verify a live Access
+login.
+
 ## Cloud deployment, only after approval
 
-No command above creates cloud resources. These commands do; run them only
-after approval and after you select the intended Cloudflare account:
+The following commands create cloud resources. Run them only after approval
+and after you select the intended Cloudflare account:
 
 ```sh
 pnpm exec wrangler login
@@ -236,14 +392,35 @@ pnpm exec wrangler deploy
 
 The config binds `DOCUMENTS` to `DocumentDO`, creates its SQLite class with the
 `v1` migration, and binds `CONTENT` to the named R2 bucket. Set `TENANT_ID`
-and the permitted browser `ALLOWED_ORIGIN` in Wrangler's variables. Supply a
-strong secret through `wrangler secret put`; do not put it in config or Git.
+and the permitted browser `ALLOWED_ORIGIN` in Wrangler's variables. If the token
+Worker is deployed, reuse its existing `JWT_SECRET`; otherwise generate a strong
+secret. Set it through `wrangler secret put`; do not put it in config or Git.
 Changing the tenant or secret does not migrate existing documents or tokens.
 
 After deployment, check `https://<worker-host>/health`, then run the official
 client against that URL with tokens for the deployed tenant and secret.
 Repeat collaboration, summary/reload, reconnect, and idle-heartbeat observations
 on the live service before using it for retained data.
+
+### Current deployment
+
+| Service | URL |
+| --- | --- |
+| Document Worker | `https://tidepool.tyler-511.workers.dev` |
+| Access-protected token Worker | `https://tidepool-auth.tyler-511.workers.dev` |
+
+Both Workers use tenant `fluid` and the same signing key. The document Worker
+uses the `tidepool-content` R2 bucket and SQLite-backed `DocumentDO` objects.
+Access protects only the token Worker; document requests and WebSocket
+admission require document JWTs.
+
+The initial cloud deployment passed a bounded official-client SharedMap
+collaboration and fresh-client reload check, plus an R2 blob upload/read.
+One small canary document remains stored; the service has no document-delete
+API. Access-authenticated token issuance, cloud hibernation/restarts, sustained
+load, and billing remain unverified.
+
+### Cleanup
 
 For cleanup, first export any data you need. Deleting the Worker with
 `pnpm exec wrangler delete --name tidepool` destroys its DO state.

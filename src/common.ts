@@ -48,7 +48,10 @@ export function bytes(value: string): number {
 	return new TextEncoder().encode(value).byteLength;
 }
 
-export async function readText(request: Request): Promise<string> {
+export async function readText(
+	request: Request,
+	limit = MAX_HTTP_BYTES,
+): Promise<string> {
 	const reader = request.body?.getReader();
 	if (!reader) throw new HttpError(400, "Missing request body");
 	const chunks: Uint8Array[] = [];
@@ -57,7 +60,7 @@ export async function readText(request: Request): Promise<string> {
 		const { done, value } = await reader.read();
 		if (done) break;
 		size += value.byteLength;
-		if (size > MAX_HTTP_BYTES) {
+		if (size > limit) {
 			await reader.cancel();
 			throw new HttpError(413, "Request body exceeds the upload limit");
 		}
@@ -76,8 +79,11 @@ export async function readText(request: Request): Promise<string> {
 	}
 }
 
-export async function readJson(request: Request): Promise<unknown> {
-	const body = await readText(request);
+export async function readJson(
+	request: Request,
+	limit = MAX_HTTP_BYTES,
+): Promise<unknown> {
+	const body = await readText(request, limit);
 	try {
 		return JSON.parse(body);
 	} catch {

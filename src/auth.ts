@@ -1,6 +1,8 @@
 import { errors, type JWTPayload, jwtVerify } from "jose";
 import { type Env, HttpError, text } from "./common.js";
 
+export type AuthEnv = Pick<Env, "TENANT_ID" | "JWT_SECRET" | "ALLOWED_ORIGIN">;
+
 export interface Claims extends JWTPayload {
 	tenantId: string;
 	documentId: string;
@@ -8,13 +10,13 @@ export interface Claims extends JWTPayload {
 	user: { id: string };
 }
 
-export function configuration(env: Env): void {
+export function configuration(env: AuthEnv): void {
 	if (!env.TENANT_ID || !env.JWT_SECRET) {
 		throw new HttpError(503, "TENANT_ID and JWT_SECRET must be configured");
 	}
 }
 
-export function originAllowed(request: Request, env: Env): void {
+export function originAllowed(request: Request, env: AuthEnv): void {
 	const origin = request.headers.get("Origin");
 	if (
 		origin &&
@@ -26,7 +28,7 @@ export function originAllowed(request: Request, env: Env): void {
 
 export async function verify(
 	token: string,
-	env: Env,
+	env: AuthEnv,
 	tenant: string,
 	document: string | undefined,
 	requiredScopes: string[],
