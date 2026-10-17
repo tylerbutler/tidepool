@@ -1,0 +1,14 @@
+/protocol/build/
+/.wrangler/
+/node_modules/
+/dist/
+/protocol/erl_crash.dump
+/.dev.vars
+/.dev.vars.*
+/.env
+/.env.*
+/.tidepool-acceptance-*/
+
+
+# APM dependencies
+apm_modules/

@@ -1,0 +1,13 @@
+name = "tidepool_protocol"
+version = "0.1.0"
+description = "JavaScript protocol logic and compatibility assertions for Tidepool"
+licences = ["MIT"]
+target = "javascript"
+
+[javascript]
+typescript_declarations = true
+
+[dependencies]
+gleam_stdlib = ">= 0.62.0 and < 2.0.0"
+gleam_json = ">= 3.0.0 and < 4.0.0"
+spillway = { git = "https://github.com/tylerbutler/spillway", ref = "49549eb65f67460d10d3bad2f8a35c3d3aafb050" }

@@ -1,0 +1,43 @@
+{
+	"name": "@tylerbu/tidepool",
+	"version": "0.0.0",
+	"private": true,
+	"description": "A Fluid Framework server for Cloudflare Workers, Durable Objects, and R2",
+	"license": "MIT",
+	"type": "module",
+	"packageManager": "pnpm@10.24.0",
+	"scripts": {
+		"build:protocol": "cd protocol && gleam build --target javascript --warnings-as-errors",
+		"test:protocol": "cd protocol && gleam run --target javascript",
+		"build": "pnpm build:protocol && wrangler deploy --dry-run --outdir dist",
+		"typecheck": "pnpm build:protocol && tsc --noEmit",
+		"check": "biome check src test package.json tsconfig.json vitest.config.ts && cd protocol && gleam format --check src",
+		"format": "biome check --write src test package.json tsconfig.json vitest.config.ts && cd protocol && gleam format src",
+		"test": "pnpm test:protocol && pnpm test:workers && pnpm test:acceptance",
+		"test:workers": "pnpm build && vitest run --exclude test/acceptance.test.ts",
+		"measure:local": "pnpm build && vitest run test/measurements.test.ts --silent=false --reporter=verbose",
+		"test:acceptance": "vitest run test/acceptance.test.ts",
+		"dev": "pnpm build:protocol && wrangler dev --ip 127.0.0.1 --port 8787",
+		"deploy:dry-run": "pnpm build"
+	},
+	"dependencies": {
+		"jose": "6.1.3"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.8",
+		"@cloudflare/workers-types": "5.20261010.1",
+		"@fluidframework/container-definitions": "2.81.1",
+		"@fluidframework/container-loader": "2.81.1",
+		"@fluidframework/container-runtime": "2.81.1",
+		"@fluidframework/driver-definitions": "2.81.1",
+		"@fluidframework/fluid-static": "2.81.1",
+		"@fluidframework/map": "2.81.1",
+		"@fluidframework/protocol-definitions": "^2.1.0",
+		"@fluidframework/routerlicious-driver": "2.81.1",
+		"@types/node": "^24.0.0",
+		"miniflare": "4.20260730.0",
+		"typescript": "~5.9.3",
+		"vitest": "^4.1.0",
+		"wrangler": "4.149.0"
+	}
+}
