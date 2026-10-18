@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-18T03:09:13.558649+00:00",
+  "title": "Design System: Tidepool Admin",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Dark teal ink",
+        "tonalRamp": ["oklch(15.00% 0.04299 199.99)", "oklch(26.43% 0.04299 199.99)", "oklch(37.86% 0.04299 199.99)", "oklch(49.29% 0.04299 199.99)", "oklch(60.71% 0.04299 199.99)", "oklch(72.14% 0.04299 199.99)", "oklch(83.57% 0.04299 199.99)", "oklch(95.00% 0.04299 199.99)"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Quiet teal",
+        "tonalRamp": ["oklch(15.00% 0.03629 191.00)", "oklch(26.43% 0.03629 191.00)", "oklch(37.86% 0.03629 191.00)", "oklch(49.29% 0.03629 191.00)", "oklch(60.71% 0.03629 191.00)", "oklch(72.14% 0.03629 191.00)", "oklch(83.57% 0.03629 191.00)", "oklch(95.00% 0.03629 191.00)"]
+      },
+      "shell": {
+        "role": "neutral",
+        "displayName": "Deep teal shell",
+        "tonalRamp": ["oklch(15.00% 0.04544 201.88)", "oklch(26.43% 0.04544 201.88)", "oklch(37.86% 0.04544 201.88)", "oklch(49.29% 0.04544 201.88)", "oklch(60.71% 0.04544 201.88)", "oklch(72.14% 0.04544 201.88)", "oklch(83.57% 0.04544 201.88)", "oklch(95.00% 0.04544 201.88)"]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Cool-green ground",
+        "tonalRamp": ["oklch(15.00% 0.00843 168.75)", "oklch(26.43% 0.00843 168.75)", "oklch(37.86% 0.00843 168.75)", "oklch(49.29% 0.00843 168.75)", "oklch(60.71% 0.00843 168.75)", "oklch(72.14% 0.00843 168.75)", "oklch(83.57% 0.00843 168.75)", "oklch(95.00% 0.00843 168.75)"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White working surface",
+        "tonalRamp": ["oklch(15.00% 0.00000 0.00)", "oklch(26.43% 0.00000 0.00)", "oklch(37.86% 0.00000 0.00)", "oklch(49.29% 0.00000 0.00)", "oklch(60.71% 0.00000 0.00)", "oklch(72.14% 0.00000 0.00)", "oklch(83.57% 0.00000 0.00)", "oklch(95.00% 0.00000 0.00)"]
+      },
+      "detail": {
+        "role": "neutral",
+        "displayName": "Pale-green detail",
+        "tonalRamp": ["oklch(15.00% 0.00824 157.09)", "oklch(26.43% 0.00824 157.09)", "oklch(37.86% 0.00824 157.09)", "oklch(49.29% 0.00824 157.09)", "oklch(60.71% 0.00824 157.09)", "oklch(72.14% 0.00824 157.09)", "oklch(83.57% 0.00824 157.09)", "oklch(95.00% 0.00824 157.09)"]
+      },
+      "selected": {
+        "role": "primary",
+        "displayName": "Selection green",
+        "tonalRamp": ["oklch(15.00% 0.02911 156.60)", "oklch(26.43% 0.02911 156.60)", "oklch(37.86% 0.02911 156.60)", "oklch(49.29% 0.02911 156.60)", "oklch(60.71% 0.02911 156.60)", "oklch(72.14% 0.02911 156.60)", "oklch(83.57% 0.02911 156.60)", "oklch(95.00% 0.02911 156.60)"]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Green-grey line",
+        "tonalRamp": ["oklch(15.00% 0.02132 166.01)", "oklch(26.43% 0.02132 166.01)", "oklch(37.86% 0.02132 166.01)", "oklch(49.29% 0.02132 166.01)", "oklch(60.71% 0.02132 166.01)", "oklch(72.14% 0.02132 166.01)", "oklch(83.57% 0.02132 166.01)", "oklch(95.00% 0.02132 166.01)"]
+      },
+      "accent": {
+        "role": "primary",
+        "displayName": "Forest-green action",
+        "tonalRamp": ["oklch(15.00% 0.07736 168.17)", "oklch(26.43% 0.07736 168.17)", "oklch(37.86% 0.07736 168.17)", "oklch(49.29% 0.07736 168.17)", "oklch(60.71% 0.07736 168.17)", "oklch(72.14% 0.07736 168.17)", "oklch(83.57% 0.07736 168.17)", "oklch(95.00% 0.07736 168.17)"]
+      },
+      "focus": {
+        "role": "secondary",
+        "displayName": "Burnt-orange focus",
+        "tonalRamp": ["oklch(15.00% 0.14506 41.16)", "oklch(26.43% 0.14506 41.16)", "oklch(37.86% 0.14506 41.16)", "oklch(49.29% 0.14506 41.16)", "oklch(60.71% 0.14506 41.16)", "oklch(72.14% 0.14506 41.16)", "oklch(83.57% 0.14506 41.16)", "oklch(95.00% 0.14506 41.16)"]
+      },
+      "used": {
+        "role": "primary",
+        "displayName": "Used-capacity green",
+        "tonalRamp": ["oklch(15.00% 0.07426 170.84)", "oklch(26.43% 0.07426 170.84)", "oklch(37.86% 0.07426 170.84)", "oklch(49.29% 0.07426 170.84)", "oklch(60.71% 0.07426 170.84)", "oklch(72.14% 0.07426 170.84)", "oklch(83.57% 0.07426 170.84)", "oklch(95.00% 0.07426 170.84)"]
+      },
+      "free": {
+        "role": "primary",
+        "displayName": "Writable-capacity green",
+        "tonalRamp": ["oklch(15.00% 0.03520 158.60)", "oklch(26.43% 0.03520 158.60)", "oklch(37.86% 0.03520 158.60)", "oklch(49.29% 0.03520 158.60)", "oklch(60.71% 0.03520 158.60)", "oklch(72.14% 0.03520 158.60)", "oklch(83.57% 0.03520 158.60)", "oklch(95.00% 0.03520 158.60)"]
+      },
+      "reserve": {
+        "role": "secondary",
+        "displayName": "Cleanup-reserve ochre",
+        "tonalRamp": ["oklch(15.00% 0.09759 81.03)", "oklch(26.43% 0.09759 81.03)", "oklch(37.86% 0.09759 81.03)", "oklch(49.29% 0.09759 81.03)", "oklch(60.71% 0.09759 81.03)", "oklch(72.14% 0.09759 81.03)", "oklch(83.57% 0.09759 81.03)", "oklch(95.00% 0.09759 81.03)"]
+      }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Page heading", "purpose": "Compact operator page heading, not promotional display typography." },
+      "headline-compact": { "displayName": "Narrow page heading", "purpose": "Page heading at max-width 560px." },
+      "title": { "displayName": "Panel title", "purpose": "Directory, lookup, and detail headings." },
+      "section-title": { "displayName": "Record section title", "purpose": "Sequence, storage, summary, and connection headings." },
+      "body": { "displayName": "Operator body", "purpose": "Root text and field content; root uses tabular numerals." },
+      "control": { "displayName": "Control text", "purpose": "Semibold native buttons and button-styled pagination links." },
+      "label": { "displayName": "Field label", "purpose": "Visible sentence-case form labels." },
+      "metadata": { "displayName": "Record metadata", "purpose": "Aligned label/value rows in the detail panel." },
+      "table-label": { "displayName": "Table label", "purpose": "Compact directory column headings." },
+      "helper": { "displayName": "Helper text", "purpose": "Supporting definitions and limitations; not a replacement for body text." },
+      "mono-id": { "displayName": "Exact identifier", "purpose": "Wrapping document IDs and metadata code." },
+      "selected-id": { "displayName": "Selected identifier", "purpose": "Prominent monospace identity within document detail." }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "select-record",
+        "value": "360ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Only the targeted detail panel animates its background from selected to detail. The animation exists only under prefers-reduced-motion: no-preference; no motion is applied for reduced-motion users."
+      }
+    ],
+    "breakpoints": [
+      { "name": "workspace-stack-max", "value": "1100px" },
+      { "name": "compact-max", "value": "560px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Native submit or retry action; exact shipped hover, focus, and disabled treatments, without added transitions.",
+      "html": "<button class=\"ds-button-primary\" type=\"button\">Open</button>",
+      "css": ".ds-button-primary { box-sizing:border-box; display:inline-flex; justify-content:center; align-items:center; min-height:44px; padding:9px 16px; border:1px solid var(--accent, #236751); border-radius:4px; background:var(--accent, #236751); color:#fff; font:600 15px/1.5 system-ui,sans-serif; text-decoration:none; cursor:pointer; white-space:nowrap; } .ds-button-primary:hover { background:#194d3d; border-color:#194d3d; } .ds-button-primary:focus-visible { outline:3px solid var(--focus, #b44d22); outline-offset:4px; } .ds-button-primary:disabled { opacity:0.6; cursor:wait; }"
+    },
+    {
+      "name": "Secondary pagination button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Native next-page link. Secondary hover inherits the primary's darker border, while changing surface and text.",
+      "html": "<a class=\"ds-button-secondary\" href=\"/admin?cursor=preview\">Next page</a>",
+      "css": ".ds-button-secondary { box-sizing:border-box; display:inline-flex; justify-content:center; align-items:center; min-height:44px; padding:9px 16px; border:1px solid var(--accent, #236751); border-radius:4px; background:#fff; color:var(--accent, #236751); font:600 15px/1.5 system-ui,sans-serif; text-decoration:none; text-underline-offset:0.2em; cursor:pointer; white-space:nowrap; } .ds-button-secondary:hover { background:#e9f3ec; color:var(--ink, #183e40); border-color:#194d3d; text-decoration-thickness:2px; } .ds-button-secondary:focus-visible { outline:3px solid var(--focus, #b44d22); outline-offset:4px; }"
+    },
+    {
+      "name": "Exact-ID field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Visible label and white native field; focus is an offset outline, not a border-color transition.",
+      "html": "<label class=\"ds-field-label\" for=\"ds-exact-id\">Exact document ID</label><input class=\"ds-field\" id=\"ds-exact-id\" name=\"document\" placeholder=\"Paste a document ID\" autocomplete=\"off\" maxlength=\"256\" required>",
+      "css": ".ds-field-label { display:block; margin-bottom:8px; color:var(--ink, #183e40); font:600 12.75px/1.5 system-ui,sans-serif; } .ds-field { box-sizing:border-box; min-width:0; width:100%; padding:10px 12px; border:1px solid #91ada0; border-radius:4px; background:#fff; color:var(--ink, #183e40); caret-color:var(--accent, #236751); font:400 15px/1.5 system-ui,sans-serif; font-variant-numeric:tabular-nums; } .ds-field::placeholder { color:#60766a; opacity:1; } .ds-field:focus-visible { outline:3px solid var(--focus, #b44d22); outline-offset:4px; }"
+    },
+    {
+      "name": "Admin navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Deep teal shell, inline SVG wave, persistent current-section underline, and text sign-out action.",
+      "html": "<header class=\"ds-header\"><div class=\"ds-header-inner\"><a class=\"ds-brand\" href=\"/admin\" aria-label=\"Tidepool admin home\"><svg width=\"26\" height=\"26\" viewBox=\"0 0 26 26\" fill=\"none\" aria-hidden=\"true\"><path d=\"M3 8c4-5 7 5 11 0s7 0 9 0M3 14c4-5 7 5 11 0s7 0 9 0M3 20c4-5 7 5 11 0s7 0 9 0\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>Tidepool</a><nav class=\"ds-nav\" aria-label=\"Main\"><a href=\"/admin\" aria-current=\"page\">Documents</a></nav><a class=\"ds-sign-out\" href=\"/cdn-cgi/access/logout\">Sign out</a></div></header>",
+      "css": ".ds-header { color:#fff; background:var(--shell, #163f42); font:400 15px/1.5 system-ui,sans-serif; } .ds-header-inner { box-sizing:border-box; max-width:1488px; margin:auto; min-height:76px; padding:0 40px; display:flex; align-items:center; gap:48px; } .ds-header a { color:#fff; text-decoration:none; text-underline-offset:0.2em; } .ds-header a:hover { text-decoration-thickness:2px; } .ds-header a:focus-visible { outline:3px solid var(--focus, #b44d22); outline-offset:4px; } .ds-brand { display:inline-flex; gap:12px; align-items:center; font-size:18.75px; font-weight:650; } .ds-nav { display:flex; align-self:stretch; } .ds-nav a { display:flex; align-items:center; border-bottom:3px solid #a8d9c0; padding:0 4px; } .ds-header .ds-sign-out { margin-left:auto; color:#d3e8df; font-size:13.5px; text-decoration:underline; } @media (max-width:560px) { .ds-header-inner { min-height:64px; padding:0 20px; gap:24px; } .ds-brand { font-size:16.2px; gap:8px; } .ds-brand svg { width:22px; } .ds-nav a, .ds-header .ds-sign-out { font-size:12px; } }"
+    },
+    {
+      "name": "Read-only status",
+      "kind": "chip",
+      "refersTo": "read-only",
+      "description": "Noninteractive status text, not a selectable chip or filter; no hover, pressed, or focus state.",
+      "html": "<span class=\"ds-read-only\">Read-only</span>",
+      "css": ".ds-read-only { padding:5px 12px; border:1px solid #a8c5b5; border-radius:4px; color:#254f40; background:#dcebe1; font:400 12.75px/1.5 system-ui,sans-serif; white-space:nowrap; }"
+    },
+    {
+      "name": "Directory surface",
+      "kind": "card",
+      "refersTo": "directory",
+      "description": "Flat white directory with aligned heading and helper band. Preview content is illustrative, not a production count.",
+      "html": "<section class=\"ds-directory\" aria-labelledby=\"ds-directory-title\"><div class=\"ds-directory-heading\"><h2 id=\"ds-directory-title\">Document directory</h2><span>8 on this page</span></div><div class=\"ds-directory-pagination\"><span>Up to 50 documents per page</span></div><p class=\"ds-directory-help\">Indexed time is when the directory entry was stored, not when the document was created. Select a document to read its current state.</p></section>",
+      "css": ".ds-directory { background:var(--surface, #ffffff); color:var(--ink, #183e40); border:1px solid var(--line, #c5d6ce); border-radius:6px; overflow:hidden; font:400 15px/1.5 system-ui,sans-serif; font-variant-numeric:tabular-nums; } .ds-directory-heading { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:20px 24px 0; } .ds-directory-heading h2 { margin:0; font-size:16.2px; line-height:1.4; font-weight:650; } .ds-directory-heading > span { font-size:12.3px; color:var(--muted, #476664); } .ds-directory-pagination { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:16px 24px; font-size:12px; color:var(--muted, #476664); } .ds-directory-help { margin:0; max-width:72ch; border-top:1px solid #dde8e1; padding:16px 24px; color:var(--muted, #476664); font-size:12px; line-height:1.55; } @media (max-width:560px) { .ds-directory-heading { padding:16px 16px 0; gap:12px; } .ds-directory-pagination { padding:14px 16px; flex-wrap:wrap; } .ds-directory-help { padding:14px 16px; } }"
+    },
+    {
+      "name": "Exact lookup form",
+      "kind": "card",
+      "refersTo": "lookup",
+      "description": "Separate white GET form for exact-ID lookup, preserving the detail anchor and native validation.",
+      "html": "<form class=\"ds-lookup\" id=\"ds-lookup\" action=\"/admin#document\" method=\"get\" aria-labelledby=\"ds-lookup-title\"><h2 id=\"ds-lookup-title\">Open by ID</h2><label for=\"ds-lookup-document\">Exact document ID</label><div class=\"ds-lookup-row\"><input id=\"ds-lookup-document\" name=\"document\" placeholder=\"Paste a document ID\" autocomplete=\"off\" maxlength=\"256\" required><button type=\"submit\">Open</button></div></form>",
+      "css": ".ds-lookup { padding:20px 24px 24px; border:1px solid var(--line, #c5d6ce); border-radius:6px; background:var(--surface, #ffffff); color:var(--ink, #183e40); margin-bottom:16px; scroll-margin-top:24px; font:400 15px/1.5 system-ui,sans-serif; } .ds-lookup h2 { margin:0 0 16px; font-size:16.2px; line-height:1.4; font-weight:650; } .ds-lookup label { display:block; font-size:12.75px; font-weight:600; margin-bottom:8px; } .ds-lookup-row { display:flex; align-items:stretch; gap:8px; } .ds-lookup input { box-sizing:border-box; font:inherit; min-width:0; width:100%; padding:10px 12px; border:1px solid #91ada0; border-radius:4px; background:#fff; color:var(--ink, #183e40); caret-color:var(--accent, #236751); } .ds-lookup input::placeholder { color:#60766a; opacity:1; } .ds-lookup button { box-sizing:border-box; display:inline-flex; justify-content:center; align-items:center; min-height:44px; padding:9px 16px; border:1px solid var(--accent, #236751); border-radius:4px; background:var(--accent, #236751); color:#fff; font:inherit; font-weight:600; cursor:pointer; white-space:nowrap; } .ds-lookup button:hover { background:#194d3d; border-color:#194d3d; } .ds-lookup input:focus-visible, .ds-lookup button:focus-visible { outline:3px solid var(--focus, #b44d22); outline-offset:4px; } .ds-lookup button:disabled { opacity:0.6; cursor:wait; } @media (max-width:560px) { .ds-lookup { padding:20px 16px; } }"
+    },
+    {
+      "name": "Document detail inlay",
+      "kind": "card",
+      "refersTo": "detail",
+      "description": "Pale-green record surface with aligned metadata and exact :target background animation. Example values are preview content.",
+      "html": "<section class=\"ds-detail\" id=\"ds-document\" aria-labelledby=\"ds-document-title\"><div class=\"ds-detail-heading\"><h2 id=\"ds-document-title\">Document details</h2><a href=\"#ds-document\">Refresh</a></div><p class=\"ds-document-id\">atlas-planning</p><dl class=\"ds-metadata\"><div><dt>Tenant</dt><dd><code>fluid</code></dd></div></dl><section class=\"ds-detail-section\"><h3>Sequence state</h3><dl class=\"ds-metadata\"><div><dt>Current sequence</dt><dd>0</dd></div><div><dt>Minimum sequence</dt><dd>0</dd></div></dl></section></section>",
+      "css": ".ds-detail { padding:24px; background:var(--detail, #f2f8f4); color:var(--ink, #183e40); border:1px solid #b5cec0; border-radius:6px; scroll-margin-top:24px; font:400 15px/1.5 system-ui,sans-serif; font-variant-numeric:tabular-nums; } .ds-detail-heading { display:flex; justify-content:space-between; align-items:baseline; gap:16px; } .ds-detail h2 { margin:0; font-size:16.2px; line-height:1.4; font-weight:650; } .ds-detail a { color:var(--accent, #236751); font-size:12.3px; text-underline-offset:0.2em; } .ds-detail a:hover { text-decoration-thickness:2px; } .ds-detail a:focus-visible { outline:3px solid var(--focus, #b44d22); outline-offset:4px; } .ds-document-id { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:15px; font-weight:600; margin:16px 0 20px; overflow-wrap:anywhere; } .ds-metadata { margin:0; } .ds-metadata > div { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.35fr); gap:20px; padding:7px 0; font-size:12.75px; } .ds-metadata dt { color:var(--muted, #476664); } .ds-metadata dd { margin:0; overflow-wrap:anywhere; text-align:right; } .ds-metadata code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12.75px; } .ds-detail-section { margin-top:24px; padding-top:20px; border-top:1px solid var(--line, #c5d6ce); } .ds-detail h3 { margin:0 0 10px; font-size:14.25px; font-weight:650; } @media (prefers-reduced-motion:no-preference) { .ds-detail:target { animation:ds-select-record 360ms cubic-bezier(0.16,1,0.3,1); } @keyframes ds-select-record { from { background-color:var(--selected, #d5eadc); } to { background-color:var(--detail, #f2f8f4); } } } @media (max-width:560px) { .ds-detail { padding:20px 16px; } .ds-detail-heading { gap:12px; } .ds-metadata > div { grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:12px; } }"
+    },
+    {
+      "name": "Directory selection",
+      "kind": "custom",
+      "refersTo": "directory-row-selected",
+      "description": "Current-state text and green surface accompany URL selection. A second row demonstrates the unselected hover state.",
+      "html": "<table class=\"ds-record-table\"><caption class=\"ds-table-caption\">Indexed documents</caption><thead><tr><th scope=\"col\">Document ID</th><th scope=\"col\">Indexed at</th></tr></thead><tbody><tr class=\"ds-selected\"><td><a class=\"ds-row-link\" href=\"/admin?document=atlas-planning#document\" aria-current=\"true\"><code>atlas-planning</code><span class=\"ds-row-action\">Selected</span></a></td><td><time datetime=\"2026-10-18T03:05:01Z\">2026-10-18 03:05:01 UTC</time></td></tr><tr><td><a class=\"ds-row-link\" href=\"/admin?document=client-onboarding#document\"><code>client-onboarding</code><span class=\"ds-row-action\">Inspect</span></a></td><td><time datetime=\"2026-10-18T03:05:01Z\">2026-10-18 03:05:01 UTC</time></td></tr></tbody></table>",
+      "css": ".ds-record-table { border-collapse:collapse; width:100%; table-layout:fixed; background:var(--surface, #ffffff); color:var(--ink, #183e40); font:400 15px/1.5 system-ui,sans-serif; font-variant-numeric:tabular-nums; } .ds-table-caption { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; } .ds-record-table th { box-sizing:border-box; background:#eff4f1; color:var(--muted, #476664); font-weight:600; font-size:11.7px; text-align:left; padding:10px 24px; border-block:1px solid var(--line, #c5d6ce); } .ds-record-table th:first-child { width:65%; } .ds-record-table td { border-bottom:1px solid #dde8e1; vertical-align:middle; } .ds-record-table td:first-child { padding:0; } .ds-record-table td:last-child { padding:12px 24px 12px 0; color:var(--muted, #476664); font-size:11.7px; } .ds-record-table time { overflow-wrap:anywhere; } .ds-row-link { box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 24px; min-height:62px; text-decoration:none; color:var(--accent, #236751); text-underline-offset:0.2em; } .ds-row-link code { color:var(--ink, #183e40); font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12.75px; overflow-wrap:anywhere; } .ds-row-action { font-size:11.1px; flex:0 0 auto; text-decoration:underline; } .ds-row-link:hover { text-decoration-thickness:2px; } .ds-row-link:focus-visible { outline:3px solid var(--focus, #b44d22); outline-offset:4px; } .ds-record-table tbody tr:hover { background:#eff6f1; } .ds-record-table .ds-selected, .ds-record-table .ds-selected:hover { background:var(--selected, #d5eadc); } .ds-selected .ds-row-action { font-weight:650; text-decoration:none; } @media (max-width:560px) { .ds-record-table th { padding:10px 16px; } .ds-record-table th:first-child { width:64%; } .ds-row-link { padding:14px 16px; flex-direction:column; align-items:start; gap:6px; } .ds-record-table td:last-child { padding:12px 16px 12px 0; font-size:10.8px; } }"
+    },
+    {
+      "name": "Logical-capacity strip",
+      "kind": "custom",
+      "refersTo": "capacity",
+      "description": "Measured used/writable/reserve portions, with accessible SVG and exact bytes. The self-contained preview uses the desktop capture's sample; production proportions are calculated from live storage values.",
+      "html": "<section class=\"ds-storage\" aria-labelledby=\"ds-storage-title\"><div class=\"ds-storage-heading\"><h3 id=\"ds-storage-title\">Logical storage</h3><span>6.34 MiB / 64 MiB</span></div><svg class=\"ds-capacity\" viewBox=\"0 0 100 8\" preserveAspectRatio=\"none\" role=\"img\" aria-label=\"6,650,033 bytes used; 59,410,255 bytes available for normal writes; 1,048,576 bytes of cleanup reserve remaining\"><rect class=\"ds-capacity-free\" width=\"100\" height=\"8\"/><rect class=\"ds-capacity-used\" width=\"9.909321367740631\" height=\"8\"/><rect class=\"ds-capacity-reserve\" x=\"98.4375\" width=\"1.5625\" height=\"8\"/></svg><dl class=\"ds-capacity-key\"><div><dt><span class=\"ds-swatch ds-used\"></span>Used</dt><dd>6.34 MiB<small>6,650,033 bytes</small></dd></div><div><dt><span class=\"ds-swatch ds-free\"></span>Writable</dt><dd>56.66 MiB<small>59,410,255 bytes</small></dd></div><div><dt><span class=\"ds-swatch ds-reserve\"></span>Cleanup reserve</dt><dd>1 MiB<small>1,048,576 bytes left</small></dd></div></dl><p class=\"ds-storage-help\">Encoded operations, commits, and reserved content. Not physical SQLite or R2 allocation. An operation can still exceed other limits.</p></section>",
+      "css": ".ds-storage { color:var(--ink, #183e40); font:400 15px/1.5 system-ui,sans-serif; font-variant-numeric:tabular-nums; } .ds-storage-heading { display:flex; justify-content:space-between; align-items:baseline; gap:16px; } .ds-storage h3 { margin:0 0 10px; font-size:14.25px; font-weight:650; } .ds-storage-heading > span { font-size:12.3px; color:var(--muted, #476664); } .ds-capacity { display:block; width:100%; height:16px; margin:12px 0 16px; border-radius:2px; } .ds-capacity-free { fill:var(--free, #c4dece); } .ds-capacity-used { fill:var(--used, #216451); } .ds-capacity-reserve { fill:var(--reserve, #96722c); } .ds-capacity-key { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0 0 16px; font-size:12px; } .ds-capacity-key dt { display:flex; gap:6px; align-items:center; color:var(--muted, #476664); font-size:11.1px; margin-bottom:6px; } .ds-capacity-key dd { margin:0; overflow-wrap:anywhere; font-weight:600; } .ds-capacity-key small { display:block; color:var(--muted, #476664); font-size:10.5px; font-weight:400; margin-top:3px; } .ds-swatch { box-sizing:border-box; display:inline-block; width:9px; height:9px; flex:0 0 auto; border:1px solid #78988a; } .ds-used { background:var(--used, #216451); } .ds-free { background:var(--free, #c4dece); } .ds-reserve { background:var(--reserve, #96722c); } .ds-storage-help { margin:0; max-width:72ch; color:var(--muted, #476664); font-size:12px; line-height:1.55; } @media (max-width:560px) { .ds-storage-heading { gap:12px; } .ds-capacity-key { gap:8px; } .ds-capacity-key dt { font-size:10.5px; } .ds-capacity-key small { font-size:9.75px; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Archive index",
+    "overview": "Tidepool's admin interface is a municipal archive finding aid translated into a compact operator UI. Identity and recorded state take precedence over decoration: deep teal navigation grounds a cool-green workspace, white directory and lookup surfaces separate finding from inspection, and a pale-green detail surface holds the selected record.\n\nThis is an Operate system for ordinary desktop/browser screens in ambient work lighting. Standard system UI typography is deliberate, not a placeholder for a display face. The implementation is code-led, server-rendered HTML and CSS, with native links, GET forms, inline SVG, no JavaScript, and no shipping raster assets. The reusable visual signature is a finite, three-part logical-capacity strip, not a decorative dashboard metric.",
+    "keyCharacteristics": [
+      "Compact, readable operator typography with tabular numerals.",
+      "Flat, bordered surfaces distinguished by green tonal layers.",
+      "Explicit selection through surface color, text, and URL state.",
+      "Native navigation and forms that remain usable without JavaScript.",
+      "Capacity shown as measured used, writable, and cleanup-reserve portions."
+    ],
+    "rules": [
+      {
+        "name": "The Selected Record Rule",
+        "body": "Keep the current row green and explicitly labeled Selected; the detail surface remains pale green rather than adopting a generic elevated-card treatment.",
+        "section": "colors"
+      },
+      {
+        "name": "The Measured Color Rule",
+        "body": "Capacity green and ochre describe used bytes, writable bytes, and cleanup reserve; do not reinterpret them as inferred document health.",
+        "section": "colors"
+      },
+      {
+        "name": "The Exact Identity Rule",
+        "body": "Use monospace for document IDs, tenant code, and hashes; retain wrapping for long values. Measurements in the shipped build use tabular system UI numerals, not the monospace measurements proposed in the direction contract.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Inlay Rule",
+        "body": "Separate working regions with tone and thin borders, not elevation; keep the selected record integrated into the workspace.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do preserve the distinction between white finding surfaces, the pale-green inspector, and the explicitly selected green row.",
+      "Do use native links, GET forms, visible labels, and the shared keyboard focus outline.",
+      "Do retain wrapping IDs, tabular measurements, UTC timestamps, and aligned metadata values.",
+      "Do label all three capacity portions and pair proportional color with readable numeric values.",
+      "Do preserve useful borders and dividers; they are part of this archive's scan rhythm."
+    ],
+    "donts": [
+      "Don't turn the capacity strip into decorative metrics or inferred health labels.",
+      "Don't introduce display typography, decorative kickers, glyph icons, or lifted card styling into this compact operator system.",
+      "Don't replace visible navigation or exact lookup with JavaScript-dependent interactions.",
+      "Don't make color alone carry selection, capacity meaning, or read-only status.",
+      "Don't add motion beyond the targeted surface change or animate it for reduced-motion users."
+    ]
+  }
+}

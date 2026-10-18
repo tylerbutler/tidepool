@@ -16,6 +16,8 @@ interface State {
 	initialSn: number;
 	used: number;
 	created: boolean;
+	createdAt?: string;
+	directoryRegistered?: boolean;
 }
 
 export interface ClientRow extends Record<string, SqlStorageValue> {
@@ -89,6 +91,19 @@ export class Storage implements HistorianStore {
 			"INSERT OR REPLACE INTO state VALUES (1, ?)",
 			JSON.stringify(state),
 		);
+	}
+
+	usage() {
+		const usedBytes = this.state().used;
+		return {
+			usedBytes,
+			budgetBytes: MAX_DOCUMENT_BYTES,
+			cleanupReserveBytes: CLEANUP_RESERVE,
+			remainingWriteBytes: Math.max(
+				0,
+				MAX_DOCUMENT_BYTES - CLEANUP_RESERVE - usedBytes,
+			),
+		};
 	}
 
 	clients(): ClientRow[] {

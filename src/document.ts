@@ -7,7 +7,6 @@ import {
 	HttpError,
 	integer,
 	MAX_CLIENTS,
-	MAX_DOCUMENT_BYTES,
 	MAX_FRAME_BYTES,
 	PING_INTERVAL_MS,
 	PING_TIMEOUT_MS,
@@ -16,9 +15,10 @@ import {
 	record,
 	text,
 } from "./common.js";
+import { directoryPrefix } from "./directory.js";
 import { Historian } from "./historian.js";
 import { type Operation, operation, protocol } from "./protocol.js";
-import { CLEANUP_RESERVE, type ClientRow, Storage } from "./storage.js";
+import { type ClientRow, Storage } from "./storage.js";
 
 interface Attachment {
 	tenant: string;
@@ -57,6 +57,60 @@ export class DocumentDO extends DurableObject<Env> {
 			document,
 			origin,
 		);
+	}
+
+	private async register(tenant: string, document: string): Promise<void> {
+		const state = this.store.state();
+		if (!state.created || state.directoryRegistered) return;
+		const key = await directoryPrefix(tenant, document);
+		await this.env.CONTENT.put(key, JSON.stringify({ tenant, document }));
+		this.store.save({ ...this.store.state(), directoryRegistered: true });
+	}
+
+	async inspect(tenant: string, document: string) {
+		if (
+			tenant !== this.env.TENANT_ID ||
+			!document ||
+			bytes(document) > 256 ||
+			!this.ctx.id.equals(
+				this.env.DOCUMENTS.idFromName(JSON.stringify([tenant, document])),
+			)
+		)
+			throw new HttpError(400, "Invalid document identity");
+		if (!this.store.state().created) return null;
+		await this.register(tenant, document);
+		const state = this.store.state();
+		const clients = new Map(this.store.clients().map((c) => [c.id, c]));
+		let readers = 0;
+		let writers = 0;
+		for (const socket of this.ctx.getWebSockets()) {
+			const id = attachment(socket).id;
+			const client = id ? clients.get(id) : undefined;
+			if (
+				socket.readyState !== WebSocket.OPEN ||
+				!client ||
+				client.expires <= Date.now()
+			)
+				continue;
+			if (client.mode === "write") writers++;
+			else readers++;
+		}
+		return {
+			id: document,
+			tenantId: tenant,
+			createdAt: state.createdAt ?? null,
+			sequenceNumber: state.sn,
+			minimumSequenceNumber: state.msn,
+			storage: this.store.usage(),
+			summary: {
+				handle: state.handle || null,
+				sequenceNumber: state.summarySn,
+				initialSequenceNumber: state.initialSn,
+				refCount: this.store.listRefs().length,
+			},
+			connections: { readers, writers, limit: MAX_CLIENTS },
+			inspectedAt: new Date().toISOString(),
+		};
 	}
 
 	async fetch(request: Request): Promise<Response> {
@@ -104,7 +158,10 @@ export class DocumentDO extends DurableObject<Env> {
 			);
 			if (create && claims.documentId !== "" && claims.documentId !== document)
 				throw new HttpError(401, "Document identity mismatch");
-			return await this.rest(request, tenant, document);
+			await this.register(tenant, document);
+			const response = await this.rest(request, tenant, document);
+			await this.register(tenant, document);
+			return response;
 		} catch (error) {
 			return errorResponse(error);
 		}
@@ -245,6 +302,7 @@ export class DocumentDO extends DurableObject<Env> {
 			throw new HttpError(401, "Routing and join identity mismatch");
 		if (!this.store.state().created)
 			throw new HttpError(404, "Document does not exist");
+		await this.register(a.tenant, a.document);
 		this.reconcile(a.document);
 		const id = crypto.randomUUID();
 		const supplied = {
@@ -597,6 +655,7 @@ export class DocumentDO extends DurableObject<Env> {
 				this.store.save({
 					...this.store.state(),
 					created: true,
+					createdAt: new Date().toISOString(),
 					sn: initial.sequenceNumber,
 					msn: initial.sequenceNumber,
 					handle: initial.handle,
@@ -651,15 +710,7 @@ export class DocumentDO extends DurableObject<Env> {
 				id: document,
 				tenantId: tenant,
 				sequenceNumber: state.sn,
-				storage: {
-					usedBytes: state.used,
-					budgetBytes: MAX_DOCUMENT_BYTES,
-					cleanupReserveBytes: CLEANUP_RESERVE,
-					remainingWriteBytes: Math.max(
-						0,
-						MAX_DOCUMENT_BYTES - CLEANUP_RESERVE - state.used,
-					),
-				},
+				storage: this.store.usage(),
 			});
 		}
 		if (

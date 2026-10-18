@@ -8,6 +8,8 @@
 /.env
 /.env.*
 /.tidepool-acceptance-*/
+/.impeccable/questions/
+/.impeccable/review/
 
 
 # APM dependencies

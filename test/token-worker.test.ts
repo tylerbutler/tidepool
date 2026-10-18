@@ -216,3 +216,28 @@ it("reports identity-service failures without minting a token", async () => {
 	expect(response.headers.get("Retry-After")).toBe("1");
 	expect(await response.json()).not.toHaveProperty("jwt");
 });
+
+it.each([
+	"/admin",
+	"/admin/",
+	"/admin/style.css",
+	"/admin/unknown",
+])("protects %s with the token service's verified Access identity", async (path) => {
+	const input = new Request(`https://issuer.example${path}`, {
+		headers: { "Cf-Access-Authenticated-User-Email": "forged@example.test" },
+	});
+	for (const ctx of [
+		{},
+		access({}, env.ACCESS_AUDIENCE),
+		access(undefined, "other-application"),
+	]) {
+		const response = await tokenWorker.fetch(input, env, ctx);
+		expect(response.status).toBe(403);
+		expect(await response.text()).not.toContain("<!doctype html>");
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+	}
+	const verified = access();
+	const response = await tokenWorker.fetch(input, env, verified);
+	expect(response.status).not.toBe(403);
+	expect(verified.access.getIdentity).toHaveBeenCalledOnce();
+});

@@ -277,9 +277,10 @@ a separate deployment test.
 ## Token service
 
 `src/token-worker.ts` is a separate HTTP-only Worker configured by
-`wrangler.auth.jsonc`. It needs no Durable Object or R2 bindings. It uses the
-existing `jose` dependency to mint the HS256 tokens that the document Worker
-accepts.
+`wrangler.auth.jsonc`. It uses the existing `jose` dependency to mint the HS256
+tokens that the document Worker accepts. It also serves the read-only
+[admin site](#admin-site), using bindings to the document Worker's existing
+Durable Object namespace and R2 bucket.
 
 Protect the token service hostname with a self-hosted
 [Cloudflare Access application](https://developers.cloudflare.com/workers/configuration/cloudflare-access/).
@@ -297,6 +298,8 @@ Set these bindings before using the service:
 | `JWT_SECRET` | A secret of at least 32 UTF-8 bytes, shared with the document Worker |
 | `ACCESS_AUDIENCE` | The Access application's AUD tag, set in `wrangler.auth.jsonc` variables |
 | `ALLOWED_ORIGIN` | Optional browser app origin; defaults to the token service origin |
+| `DOCUMENTS` | Admin only: the document Worker's `DocumentDO` namespace |
+| `CONTENT` | Admin only: the same R2 bucket as the document Worker |
 
 The Worker requires Cloudflare's verified `ctx.access` context and a matching
 audience. It derives `user.id` from the Access user's stable `user_uuid`. Forged
@@ -357,7 +360,9 @@ tokens when they reconnect.
 ### Deploying the token Worker
 
 Deployment requires approval and the intended Cloudflare account. It does not
-enable R2 or deploy the document Worker.
+create an R2 bucket or deploy the document Worker. Deploy the document Worker
+first when using the admin site; the auth config refers to its existing
+`DocumentDO` namespace by `script_name: "tidepool"`.
 
 1. Create the Access application, its allowlist, and login provider in Cloudflare
    Zero Trust. Set `ACCESS_AUDIENCE` to the application's AUD tag.
@@ -376,6 +381,49 @@ email PIN setup, `Access: Organizations, Identity Providers, and Groups Write`.
 If Access setup is unavailable, the Worker can deploy with minting disabled
 until its audience is configured. Local JWT tests do not verify a live Access
 login.
+
+## Admin site
+
+Open `/admin` on the token service hostname after signing in through
+Cloudflare Access. The admin site uses the same verified Access context,
+audience, and users as `/tokens`. Forged headers and direct requests that
+bypass Access cannot read the directory, metadata, or stylesheet. The site
+does not introduce another login, permission tier, or browser JWT.
+
+The document directory shows up to 50 entries per page. Filter by a
+case-sensitive document-ID prefix, follow the next-page link, or open an exact
+document ID. Selecting a document reads its current sequence and minimum
+sequence, summary checkpoint and head, stored ref count, logical storage
+capacity, and authenticated reader/writer connection counts. Use **Refresh**
+to get another snapshot. Only the selected document is queried; listing does
+not wake every document. The server does not interpret or display DDS contents.
+There are no edit or delete controls.
+
+Directory entries are small R2 objects under `directory/v1/`, separate from
+the historian's immutable content. Their storage is not part of a document's
+64 MiB logical budget. New documents register after their creation is durable.
+Existing documents register on authenticated REST access, WebSocket admission,
+or a successful admin ID lookup. A durable registration flag avoids an R2 write
+on each later access. The index timestamp is not a document creation timestamp;
+creation dates are available only for documents created after this feature.
+
+**Coverage limit:** Durable Objects cannot enumerate existing document names.
+Untouched legacy documents are absent until accessed or opened by exact ID.
+The directory is not an immediate inventory of all previously stored objects.
+An unknown ID returns 404 without creating a document or directory entry.
+
+Directory storage failures return an explicit error rather than an empty list.
+If registration fails after a document's creation commits, creation returns a
+retryable 503 even though the document exists. Open that document ID or access
+it again to retry registration; repeating creation can return 409. Directory
+registration and document creation cannot share a transaction across R2 and
+SQLite. Neither an admin inspection nor registration appends document operations.
+
+The interface is server-rendered and works without JavaScript. Forms, metadata,
+and styles use `Cache-Control: no-store`; a restrictive Content Security Policy
+blocks scripts and embedding. Local tests use simulated Access context to check
+the boundary. They do not verify a live Access login. No cloud deployment is
+part of building or testing this feature.
 
 ## Cloud deployment, only after approval
 
@@ -408,11 +456,17 @@ on the live service before using it for retained data.
 | --- | --- |
 | Document Worker | `https://tidepool.tyler-511.workers.dev` |
 | Access-protected token Worker | `https://tidepool-auth.tyler-511.workers.dev` |
+| Admin site (same Access application) | `https://tidepool-auth.tyler-511.workers.dev/admin` |
 
 Both Workers use tenant `fluid` and the same signing key. The document Worker
 uses the `tidepool-content` R2 bucket and SQLite-backed `DocumentDO` objects.
 Access protects only the token Worker; document requests and WebSocket
 admission require document JWTs.
+
+The admin site and its document-inspection dependency are deployed. Anonymous
+requests to `/admin`, its stylesheet, and `/tokens` redirect to the existing
+Access sign-in. Signed-in document browsing remains unverified on the live
+service; no Access users or policies were changed for this deployment.
 
 The initial cloud deployment passed a bounded official-client SharedMap
 collaboration and fresh-client reload check, plus an R2 blob upload/read.
