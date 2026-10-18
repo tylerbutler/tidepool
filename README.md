@@ -118,7 +118,7 @@ Run these from the repository root:
 | Command | Purpose |
 | --- | --- |
 | `pnpm build` | Gleam JavaScript build and dry-run bundles for both Workers |
-| `pnpm build:auth` | Token Worker dry-run bundle, without Gleam or R2 |
+| `pnpm build:admin` | Admin/token Worker dry-run bundle, without Gleam or R2 |
 | `pnpm typecheck` | Strict TypeScript boundary check |
 | `pnpm check` / `pnpm format` | Biome and Gleam formatting |
 | `pnpm test:protocol` | Assert protocol behavior on JavaScript |
@@ -276,9 +276,11 @@ a separate deployment test.
 
 ## Token service
 
-`src/token-worker.ts` is a separate HTTP-only Worker configured by
-`wrangler.auth.jsonc`. It uses the existing `jose` dependency to mint the HS256
-tokens that the document Worker accepts. It also serves the read-only
+The separate HTTP-only admin/token service uses `src/token-worker.ts` and
+`wrangler.admin.jsonc`. The deployed Worker keeps the name `tidepool-auth` to
+preserve its hostname, Access application, and secrets. It uses the existing
+`jose` dependency to mint the HS256 tokens that the document Worker accepts.
+It also serves the read-only
 [admin site](#admin-site), using bindings to the document Worker's existing
 Durable Object namespace and R2 bucket.
 
@@ -296,7 +298,7 @@ Set these bindings before using the service:
 | --- | --- |
 | `TENANT_ID` | The same tenant as the document Worker |
 | `JWT_SECRET` | A secret of at least 32 UTF-8 bytes, shared with the document Worker |
-| `ACCESS_AUDIENCE` | The Access application's AUD tag, set in `wrangler.auth.jsonc` variables |
+| `ACCESS_AUDIENCE` | The Access application's AUD tag, set in `wrangler.admin.jsonc` variables |
 | `ALLOWED_ORIGIN` | Optional browser app origin; defaults to the token service origin |
 | `DOCUMENTS` | Admin only: the document Worker's `DocumentDO` namespace |
 | `CONTENT` | Admin only: the same R2 bucket as the document Worker |
@@ -357,21 +359,21 @@ browser restrictions; use a same-origin token route when integrating a browser
 app. The document Worker closes expired sockets, so clients must obtain fresh
 tokens when they reconnect.
 
-### Deploying the token Worker
+### Deploying the admin/token Worker
 
 Deployment requires approval and the intended Cloudflare account. It does not
 create an R2 bucket or deploy the document Worker. Deploy the document Worker
-first when using the admin site; the auth config refers to its existing
+first when using the admin site; the admin config refers to its existing
 `DocumentDO` namespace by `script_name: "tidepool"`.
 
 1. Create the Access application, its allowlist, and login provider in Cloudflare
    Zero Trust. Set `ACCESS_AUDIENCE` to the application's AUD tag.
 2. Set `JWT_SECRET` with
-   `pnpm exec wrangler secret put JWT_SECRET --config wrangler.auth.jsonc`.
+   `pnpm exec wrangler secret put JWT_SECRET --config wrangler.admin.jsonc`.
    Use the same secret when deploying the document Worker. Keep a secure backup;
    Cloudflare does not return stored Worker secrets.
-3. Run `pnpm build:auth`, then
-   `pnpm exec wrangler deploy --config wrangler.auth.jsonc`.
+3. Run `pnpm build:admin`, then
+   `pnpm exec wrangler deploy --config wrangler.admin.jsonc`.
 4. Sign in at the deployed hostname, check `/health`, and request a token.
    A direct request without verified Access context must not return a JWT.
 
@@ -455,7 +457,7 @@ on the live service before using it for retained data.
 | Service | URL |
 | --- | --- |
 | Document Worker | `https://tidepool.tyler-511.workers.dev` |
-| Access-protected token Worker | `https://tidepool-auth.tyler-511.workers.dev` |
+| Access-protected admin/token Worker | `https://tidepool-auth.tyler-511.workers.dev` |
 | Admin site (same Access application) | `https://tidepool-auth.tyler-511.workers.dev/admin` |
 
 Both Workers use tenant `fluid` and the same signing key. The document Worker

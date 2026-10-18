@@ -1,6 +1,160 @@
 lockfile_version: '1'
 apm_version: 0.32.0
 dependencies:
+- repo_url: pbakaus/impeccable
+  name: impeccable
+  host: github.com
+  resolved_commit: d631a8827f99414d2b6daba4ef08b7f8701751d7
+  resolved_ref: skill-v4.5.2
+  version: 4.5.2
+  virtual_path: plugin
+  is_virtual: true
+  package_type: skill_bundle
+  deployed_files:
+  - .agents/skills/impeccable
+  - .agents/skills/impeccable/SKILL.md
+  - .agents/skills/impeccable/reference/adapt.md
+  - .agents/skills/impeccable/reference/adapt.native.md
+  - .agents/skills/impeccable/reference/android.md
+  - .agents/skills/impeccable/reference/animate.md
+  - .agents/skills/impeccable/reference/audit.md
+  - .agents/skills/impeccable/reference/audit.native.md
+  - .agents/skills/impeccable/reference/bolder.md
+  - .agents/skills/impeccable/reference/clarify.md
+  - .agents/skills/impeccable/reference/colorize.md
+  - .agents/skills/impeccable/reference/component-review.md
+  - .agents/skills/impeccable/reference/craft-floor.md
+  - .agents/skills/impeccable/reference/craft.md
+  - .agents/skills/impeccable/reference/critique.md
+  - .agents/skills/impeccable/reference/degraded/asset-producer.md
+  - .agents/skills/impeccable/reference/degraded/documenter.md
+  - .agents/skills/impeccable/reference/degraded/finish-reviewer.md
+  - .agents/skills/impeccable/reference/degraded/manual-edit-applier.md
+  - .agents/skills/impeccable/reference/delight.md
+  - .agents/skills/impeccable/reference/distill.md
+  - .agents/skills/impeccable/reference/doctor.md
+  - .agents/skills/impeccable/reference/document.md
+  - .agents/skills/impeccable/reference/extract.md
+  - .agents/skills/impeccable/reference/generate.md
+  - .agents/skills/impeccable/reference/harden.md
+  - .agents/skills/impeccable/reference/hooks.md
+  - .agents/skills/impeccable/reference/init.md
+  - .agents/skills/impeccable/reference/ios.md
+  - .agents/skills/impeccable/reference/layout.md
+  - .agents/skills/impeccable/reference/live-setup.md
+  - .agents/skills/impeccable/reference/live.md
+  - .agents/skills/impeccable/reference/mode-operate.md
+  - .agents/skills/impeccable/reference/mode-persuade.md
+  - .agents/skills/impeccable/reference/mode-read.md
+  - .agents/skills/impeccable/reference/new-work.md
+  - .agents/skills/impeccable/reference/onboard.md
+  - .agents/skills/impeccable/reference/operate.md
+  - .agents/skills/impeccable/reference/optimize.md
+  - .agents/skills/impeccable/reference/overdrive.md
+  - .agents/skills/impeccable/reference/polish.md
+  - .agents/skills/impeccable/reference/quieter.md
+  - .agents/skills/impeccable/reference/region-map.md
+  - .agents/skills/impeccable/reference/routing.md
+  - .agents/skills/impeccable/reference/shape.md
+  - .agents/skills/impeccable/reference/typeset.md
+  - .agents/skills/impeccable/reference/visualize.md
+  - .agents/skills/impeccable/scripts/VERSION
+  - .agents/skills/impeccable/scripts/command-metadata.json
+  - .agents/skills/impeccable/scripts/data/font-index-failures.json
+  - .agents/skills/impeccable/scripts/data/font-index.json
+  - .agents/skills/impeccable/scripts/impeccable
+  - .agents/skills/impeccable/scripts/impeccable.cmd
+  - .agents/skills/impeccable/scripts/live-browser-dom.js
+  - .agents/skills/impeccable/scripts/live-browser-ignores.js
+  - .agents/skills/impeccable/scripts/live-browser-session.js
+  - .agents/skills/impeccable/scripts/live-browser.js
+  - .agents/skills/impeccable/scripts/modern-screenshot.umd.js
+  - .github/agents/impeccable-asset-producer.agent.md
+  - .github/agents/impeccable-documenter.agent.md
+  - .github/agents/impeccable-finish-reviewer.agent.md
+  - .github/agents/impeccable-manual-edit-applier.agent.md
+  - .github/hooks/plugin-hooks.json
+  - .github/hooks/scripts/plugin/skills/impeccable/scripts/VERSION
+  - .github/hooks/scripts/plugin/skills/impeccable/scripts/impeccable
+  - .github/hooks/scripts/plugin/skills/impeccable/scripts/impeccable.cmd
+  - .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser-dom.js
+  - .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser-ignores.js
+  - .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser-session.js
+  - .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser.js
+  - .github/hooks/scripts/plugin/skills/impeccable/scripts/modern-screenshot.umd.js
+  deployed_file_hashes:
+    .agents/skills/impeccable/SKILL.md: sha256:3984708c4fec7cf5227e405c9f7086e681949b9bef009569f101fa60b660a40d
+    .agents/skills/impeccable/reference/adapt.md: sha256:0648e4e06d01cabc91fa7dc19256ceedeeeea213b9265e9d36b0918370e16fb2
+    .agents/skills/impeccable/reference/adapt.native.md: sha256:17c583cf8ad41266ea1e787b666b9d91fe13469d3d0f6af57c08e0146f9b17ac
+    .agents/skills/impeccable/reference/android.md: sha256:058f81f256134841875fd3183e06b37a023de0c877fd2b9eecd97011640791fe
+    .agents/skills/impeccable/reference/animate.md: sha256:94b4ce6299fea93d9f256b2d25705961a76bc5ea940c56db4145686ebc99df1b
+    .agents/skills/impeccable/reference/audit.md: sha256:b7c98bde47e00889c235e3d808b596224aad5a0869f25e439f135ce86551a075
+    .agents/skills/impeccable/reference/audit.native.md: sha256:fe91fcf28638f95577af481a50edaf339d6c9a3ad3b9fa477bc81c116b8bc392
+    .agents/skills/impeccable/reference/bolder.md: sha256:4879f38b23d0a251a63cbb0327e660296194cd2e71eb4da3236c6ebfe5807746
+    .agents/skills/impeccable/reference/clarify.md: sha256:6c382f8283756e8a693d832b750f7e4cbff1ca5bdcc3825b2b4ef4da9f21876a
+    .agents/skills/impeccable/reference/colorize.md: sha256:d1fbd55074abb2251bdaa03749d34acc42c38e46e47549f18f5848df57d43c42
+    .agents/skills/impeccable/reference/component-review.md: sha256:7780461422046ea2d7ae8b62558cbcb2a32a3c8160af8f1cb16f3c434abc00bc
+    .agents/skills/impeccable/reference/craft-floor.md: sha256:96e2e6bd4fcf9a2c6da65fb029f96d9176308fae2efd9d8653d3b8d838960e07
+    .agents/skills/impeccable/reference/craft.md: sha256:9205e222bc6565b37fb504ceec93233c2d2a456802b69d16e6b1c44723907c4c
+    .agents/skills/impeccable/reference/critique.md: sha256:8bf1b06547f571d9b8d3875426fff6621fadd3bc08ae9ebb16d749f5c5f44b01
+    .agents/skills/impeccable/reference/degraded/asset-producer.md: sha256:37c023b8bbb99221516d3c73f1f1b1be7da3a6dd75c1376799e940b5e6d55223
+    .agents/skills/impeccable/reference/degraded/documenter.md: sha256:bcc05ea92faebb5c74037a9d4263a5ce9a56f5ab07c8ab3c59ee704d8cade745
+    .agents/skills/impeccable/reference/degraded/finish-reviewer.md: sha256:275dd1b6e63bbd30d2713227c4f79b880a8bc4e01cc48d392068bb86939d3afa
+    .agents/skills/impeccable/reference/degraded/manual-edit-applier.md: sha256:5fae7f8a2fc3ddd49ad0a413446dc44daedef5b6b7de5eb935bd2fbfad646d58
+    .agents/skills/impeccable/reference/delight.md: sha256:56500b1f9d2fcec8324d7f448d813048b5831a46d3feeb1055bd3eb17ec3660f
+    .agents/skills/impeccable/reference/distill.md: sha256:b2f60e0154bf0e687badc46d8c8420e2118a9a6e21162050722be779dc02cb6d
+    .agents/skills/impeccable/reference/doctor.md: sha256:5eb790f0e7af38b9a5ec9c037ad51beac42f6cadb2e5949e9492011c833713dd
+    .agents/skills/impeccable/reference/document.md: sha256:87b3db688c7963898bda8096f7868fed05ec5a0a80d14298e8b906b70cdf9c42
+    .agents/skills/impeccable/reference/extract.md: sha256:bfc51972fbf387566dc9e29c8b1af479a66ab401fdbce659fae9e6a5a9d85316
+    .agents/skills/impeccable/reference/generate.md: sha256:abb8829a629420e6de63690dfbb4a074a01c3de8a3d4934f2bea4bca95dcda5f
+    .agents/skills/impeccable/reference/harden.md: sha256:3898bd9b56a042e860a0db4fb4dd81ac81126fa218b604702e2ac0c2287ae09b
+    .agents/skills/impeccable/reference/hooks.md: sha256:15da1c42d4d208e5f9e9ef24c3326bf8626794de57e7291276d8a5d428f50f54
+    .agents/skills/impeccable/reference/init.md: sha256:dc340befdfb87d1de3b70e860fab0be7e951a60d3ddc529072c39eb136cfcfcd
+    .agents/skills/impeccable/reference/ios.md: sha256:40c87038b5f75147a5952a96237acf312a327bf70c1bcd8e0a5f064625ae9668
+    .agents/skills/impeccable/reference/layout.md: sha256:1d6d2658482b7e2df0c4d27b1b29c5195f0803b402278b96590598f4d3e57aa7
+    .agents/skills/impeccable/reference/live-setup.md: sha256:73058cdbe80f7387a8b063db4e2376d0d7276ddaff6bd5e14d3473aecb640465
+    .agents/skills/impeccable/reference/live.md: sha256:82a16d267d0b39ff381a65e3093d372fbbc845484f2c831583bef0447aaaad51
+    .agents/skills/impeccable/reference/mode-operate.md: sha256:7a52dd7a94ee75f6ae89542c86a1b6e1d306812b16e0d9dbf12d4acad44d148b
+    .agents/skills/impeccable/reference/mode-persuade.md: sha256:21e78c8a77badb3f83290cd4577ed3b24bd4dd3b57136d7da75733d4f3ee9ac0
+    .agents/skills/impeccable/reference/mode-read.md: sha256:a569989e6a3d6453b4c45e9474e162a15cc54e11732ac6baa7990a6e7cccc0b5
+    .agents/skills/impeccable/reference/new-work.md: sha256:7b7cc975a9a62134b6b98dad90930e7139382f51dee2f2960e41bef83be05909
+    .agents/skills/impeccable/reference/onboard.md: sha256:9a2c08ee2516d2ee87129e7ebe6a0895f9990c9852d1f6fa7e70be9a6a88a659
+    .agents/skills/impeccable/reference/operate.md: sha256:a9d2203acd45ca33a13d5c68b02b23ed512425ac15f0e8438318ed124b43729d
+    .agents/skills/impeccable/reference/optimize.md: sha256:6d368b679a0ed1815812815de65863b5840d419589dfbda06224c01149240287
+    .agents/skills/impeccable/reference/overdrive.md: sha256:a9856cb40da6519b1334bcfc75a4fbe83bef39ca86ee6f3effcb2a96794c627c
+    .agents/skills/impeccable/reference/polish.md: sha256:73893e18e874e14beccd7fca92335d9036f5a5e068fd8815fd7daceadf186a43
+    .agents/skills/impeccable/reference/quieter.md: sha256:ee6d6d127c1c2ab3526d529a8e3698be2185b5e346ac617f37501de2c0698b97
+    .agents/skills/impeccable/reference/region-map.md: sha256:5c0d1dca9ab72c3ae4a0ea728d6acecf8af980a5b7defa1c7a3924992b62f69a
+    .agents/skills/impeccable/reference/routing.md: sha256:dd6c5877467a30cb328789297bb5250b21c1c673d25c570a990043aa07ed01ac
+    .agents/skills/impeccable/reference/shape.md: sha256:a55f016c046cb6a27c55bd7f346375aeb506a755c4fbca19a5f92dbd42309c23
+    .agents/skills/impeccable/reference/typeset.md: sha256:da98692848aa2e9ea22c681522a082f2226cb5dbfdb704ac38903be1b4cffafd
+    .agents/skills/impeccable/reference/visualize.md: sha256:0aaba948fce6d622072e3df922c3c2df9525cd45ccbe6e31f1df9e5ccb14841a
+    .agents/skills/impeccable/scripts/VERSION: sha256:9940d4b5219de8404015bc18af844c88d7e9e9105682a5d47b1d369d027dbd25
+    .agents/skills/impeccable/scripts/command-metadata.json: sha256:e8720f3aa41135211cc58cc299a39eeda86c75651f4279cc1ede8db10dcc0584
+    .agents/skills/impeccable/scripts/data/font-index-failures.json: sha256:835f19a0a3812f3652dd6979a2ce5597f654fd01f26e1b420b92d5f42b997ce4
+    .agents/skills/impeccable/scripts/data/font-index.json: sha256:47edbdfaf27073c47033d1ac7dfee881be49e2dcbda7671d1157300481dde6da
+    .agents/skills/impeccable/scripts/impeccable: sha256:39d9600489073e227e4f4d55c451ce4252a6632ed7ae37923efbbcbc91f16d07
+    .agents/skills/impeccable/scripts/impeccable.cmd: sha256:69cad1ae7355825ef320ac9638a1c9675ba9fda01c9a0fa12244cc4a1973e550
+    .agents/skills/impeccable/scripts/live-browser-dom.js: sha256:24f09f2597b9b55a1e2c4acd2ae5c95db5c8615cfc20aa07d1a3950538ad5c4a
+    .agents/skills/impeccable/scripts/live-browser-ignores.js: sha256:c1cb6877ca99a0c1b38ba0c7d59f32702d3022f6821d8045f7133f7c40b6362f
+    .agents/skills/impeccable/scripts/live-browser-session.js: sha256:42831c3cd874346d8e7f120808d91e6ed3cda5c3eca6eefd76b126659536bc87
+    .agents/skills/impeccable/scripts/live-browser.js: sha256:d7f1ee3fdfc423e90268e9c666dce61b2180b62431dbb6ecfc48bca65398a1f8
+    .agents/skills/impeccable/scripts/modern-screenshot.umd.js: sha256:bb36665889124a0b6e15f16045265737449c3bdcf2712cdb08af3cfa01563e2b
+    .github/agents/impeccable-asset-producer.agent.md: sha256:c23e496d983b1fe53dffc31740ed31f0633a8486f475784520553c0f163f6107
+    .github/agents/impeccable-documenter.agent.md: sha256:6bc62a59f6fef0b749927c8d10e9849ab2411199d86d70772a86f8e83ac309f5
+    .github/agents/impeccable-finish-reviewer.agent.md: sha256:08398fa2d8e2b06b849f1c0f032e1e93b832e9294aed35c1c7f62b938d62ee80
+    .github/agents/impeccable-manual-edit-applier.agent.md: sha256:b2d71ff0df7ed49e06dfc4acfce3d3f7eb48afa68be04763ee8c08354df50a07
+    .github/hooks/plugin-hooks.json: sha256:9f4b86ee6102f1c838aa2bc2a579478855e9fbcc4d111c44466167be10c67601
+    .github/hooks/scripts/plugin/skills/impeccable/scripts/VERSION: sha256:9940d4b5219de8404015bc18af844c88d7e9e9105682a5d47b1d369d027dbd25
+    .github/hooks/scripts/plugin/skills/impeccable/scripts/impeccable: sha256:39d9600489073e227e4f4d55c451ce4252a6632ed7ae37923efbbcbc91f16d07
+    .github/hooks/scripts/plugin/skills/impeccable/scripts/impeccable.cmd: sha256:69cad1ae7355825ef320ac9638a1c9675ba9fda01c9a0fa12244cc4a1973e550
+    .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser-dom.js: sha256:24f09f2597b9b55a1e2c4acd2ae5c95db5c8615cfc20aa07d1a3950538ad5c4a
+    .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser-ignores.js: sha256:c1cb6877ca99a0c1b38ba0c7d59f32702d3022f6821d8045f7133f7c40b6362f
+    .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser-session.js: sha256:42831c3cd874346d8e7f120808d91e6ed3cda5c3eca6eefd76b126659536bc87
+    .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser.js: sha256:d7f1ee3fdfc423e90268e9c666dce61b2180b62431dbb6ecfc48bca65398a1f8
+    .github/hooks/scripts/plugin/skills/impeccable/scripts/modern-screenshot.umd.js: sha256:bb36665889124a0b6e15f16045265737449c3bdcf2712cdb08af3cfa01563e2b
+  content_hash: sha256:1f178f33595736d30ef55c12298ec329c7bd8d4af6fe7c004772b30e431be3a6
+  is_dev: true
 - repo_url: tylerbutler/apm-base
   name: apm-base
   host: github.com
@@ -177,6 +331,528 @@ deployments:
   - tylerbutler/apm-base
   active_owner: tylerbutler/apm-base
   content_hash: sha256:14fc8a965b6e0a8dc100ba4dffeab55cb94bbac112abbde7e014d5c15a35c202
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: null
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:3984708c4fec7cf5227e405c9f7086e681949b9bef009569f101fa60b660a40d
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/adapt.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:0648e4e06d01cabc91fa7dc19256ceedeeeea213b9265e9d36b0918370e16fb2
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/adapt.native.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:17c583cf8ad41266ea1e787b666b9d91fe13469d3d0f6af57c08e0146f9b17ac
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/android.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:058f81f256134841875fd3183e06b37a023de0c877fd2b9eecd97011640791fe
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/animate.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:94b4ce6299fea93d9f256b2d25705961a76bc5ea940c56db4145686ebc99df1b
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/audit.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:b7c98bde47e00889c235e3d808b596224aad5a0869f25e439f135ce86551a075
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/audit.native.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:fe91fcf28638f95577af481a50edaf339d6c9a3ad3b9fa477bc81c116b8bc392
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/bolder.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:4879f38b23d0a251a63cbb0327e660296194cd2e71eb4da3236c6ebfe5807746
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/clarify.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:6c382f8283756e8a693d832b750f7e4cbff1ca5bdcc3825b2b4ef4da9f21876a
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/colorize.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:d1fbd55074abb2251bdaa03749d34acc42c38e46e47549f18f5848df57d43c42
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/component-review.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:7780461422046ea2d7ae8b62558cbcb2a32a3c8160af8f1cb16f3c434abc00bc
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/craft-floor.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:96e2e6bd4fcf9a2c6da65fb029f96d9176308fae2efd9d8653d3b8d838960e07
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/craft.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:9205e222bc6565b37fb504ceec93233c2d2a456802b69d16e6b1c44723907c4c
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/critique.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:8bf1b06547f571d9b8d3875426fff6621fadd3bc08ae9ebb16d749f5c5f44b01
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/degraded/asset-producer.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:37c023b8bbb99221516d3c73f1f1b1be7da3a6dd75c1376799e940b5e6d55223
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/degraded/documenter.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:bcc05ea92faebb5c74037a9d4263a5ce9a56f5ab07c8ab3c59ee704d8cade745
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/degraded/finish-reviewer.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:275dd1b6e63bbd30d2713227c4f79b880a8bc4e01cc48d392068bb86939d3afa
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/degraded/manual-edit-applier.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:5fae7f8a2fc3ddd49ad0a413446dc44daedef5b6b7de5eb935bd2fbfad646d58
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/delight.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:56500b1f9d2fcec8324d7f448d813048b5831a46d3feeb1055bd3eb17ec3660f
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/distill.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:b2f60e0154bf0e687badc46d8c8420e2118a9a6e21162050722be779dc02cb6d
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/doctor.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:5eb790f0e7af38b9a5ec9c037ad51beac42f6cadb2e5949e9492011c833713dd
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/document.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:87b3db688c7963898bda8096f7868fed05ec5a0a80d14298e8b906b70cdf9c42
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/extract.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:bfc51972fbf387566dc9e29c8b1af479a66ab401fdbce659fae9e6a5a9d85316
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/generate.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:abb8829a629420e6de63690dfbb4a074a01c3de8a3d4934f2bea4bca95dcda5f
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/harden.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:3898bd9b56a042e860a0db4fb4dd81ac81126fa218b604702e2ac0c2287ae09b
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/hooks.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:15da1c42d4d208e5f9e9ef24c3326bf8626794de57e7291276d8a5d428f50f54
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/init.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:dc340befdfb87d1de3b70e860fab0be7e951a60d3ddc529072c39eb136cfcfcd
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/ios.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:40c87038b5f75147a5952a96237acf312a327bf70c1bcd8e0a5f064625ae9668
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/layout.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:1d6d2658482b7e2df0c4d27b1b29c5195f0803b402278b96590598f4d3e57aa7
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/live-setup.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:73058cdbe80f7387a8b063db4e2376d0d7276ddaff6bd5e14d3473aecb640465
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/live.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:82a16d267d0b39ff381a65e3093d372fbbc845484f2c831583bef0447aaaad51
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/mode-operate.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:7a52dd7a94ee75f6ae89542c86a1b6e1d306812b16e0d9dbf12d4acad44d148b
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/mode-persuade.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:21e78c8a77badb3f83290cd4577ed3b24bd4dd3b57136d7da75733d4f3ee9ac0
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/mode-read.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:a569989e6a3d6453b4c45e9474e162a15cc54e11732ac6baa7990a6e7cccc0b5
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/new-work.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:7b7cc975a9a62134b6b98dad90930e7139382f51dee2f2960e41bef83be05909
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/onboard.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:9a2c08ee2516d2ee87129e7ebe6a0895f9990c9852d1f6fa7e70be9a6a88a659
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/operate.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:a9d2203acd45ca33a13d5c68b02b23ed512425ac15f0e8438318ed124b43729d
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/optimize.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:6d368b679a0ed1815812815de65863b5840d419589dfbda06224c01149240287
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/overdrive.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:a9856cb40da6519b1334bcfc75a4fbe83bef39ca86ee6f3effcb2a96794c627c
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/polish.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:73893e18e874e14beccd7fca92335d9036f5a5e068fd8815fd7daceadf186a43
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/quieter.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:ee6d6d127c1c2ab3526d529a8e3698be2185b5e346ac617f37501de2c0698b97
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/region-map.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:5c0d1dca9ab72c3ae4a0ea728d6acecf8af980a5b7defa1c7a3924992b62f69a
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/routing.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:dd6c5877467a30cb328789297bb5250b21c1c673d25c570a990043aa07ed01ac
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/shape.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:a55f016c046cb6a27c55bd7f346375aeb506a755c4fbca19a5f92dbd42309c23
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/typeset.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:da98692848aa2e9ea22c681522a082f2226cb5dbfdb704ac38903be1b4cffafd
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/reference/visualize.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:0aaba948fce6d622072e3df922c3c2df9525cd45ccbe6e31f1df9e5ccb14841a
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/VERSION
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:9940d4b5219de8404015bc18af844c88d7e9e9105682a5d47b1d369d027dbd25
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/command-metadata.json
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:e8720f3aa41135211cc58cc299a39eeda86c75651f4279cc1ede8db10dcc0584
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/data/font-index-failures.json
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:835f19a0a3812f3652dd6979a2ce5597f654fd01f26e1b420b92d5f42b997ce4
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/data/font-index.json
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:47edbdfaf27073c47033d1ac7dfee881be49e2dcbda7671d1157300481dde6da
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/impeccable
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:39d9600489073e227e4f4d55c451ce4252a6632ed7ae37923efbbcbc91f16d07
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/impeccable.cmd
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:69cad1ae7355825ef320ac9638a1c9675ba9fda01c9a0fa12244cc4a1973e550
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/live-browser-dom.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:24f09f2597b9b55a1e2c4acd2ae5c95db5c8615cfc20aa07d1a3950538ad5c4a
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/live-browser-ignores.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:c1cb6877ca99a0c1b38ba0c7d59f32702d3022f6821d8045f7133f7c40b6362f
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/live-browser-session.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:42831c3cd874346d8e7f120808d91e6ed3cda5c3eca6eefd76b126659536bc87
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/live-browser.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:d7f1ee3fdfc423e90268e9c666dce61b2180b62431dbb6ecfc48bca65398a1f8
+- kind: project-relative
+  target: copilot
+  value: .agents/skills/impeccable/scripts/modern-screenshot.umd.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:bb36665889124a0b6e15f16045265737449c3bdcf2712cdb08af3cfa01563e2b
 - kind: project-relative
   target: copilot
   value: .agents/skills/ponytail
@@ -395,6 +1071,51 @@ deployments:
   content_hash: sha256:ccab208e315ce05e2fab8eeee2f7879f1289b5c6844840b2d307adf31c79144f
 - kind: project-relative
   target: copilot
+  value: .github/agents/impeccable-asset-producer.agent.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:c23e496d983b1fe53dffc31740ed31f0633a8486f475784520553c0f163f6107
+- kind: project-relative
+  target: copilot
+  value: .github/agents/impeccable-documenter.agent.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:6bc62a59f6fef0b749927c8d10e9849ab2411199d86d70772a86f8e83ac309f5
+- kind: project-relative
+  target: copilot
+  value: .github/agents/impeccable-finish-reviewer.agent.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:08398fa2d8e2b06b849f1c0f032e1e93b832e9294aed35c1c7f62b938d62ee80
+- kind: project-relative
+  target: copilot
+  value: .github/agents/impeccable-manual-edit-applier.agent.md
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:b2d71ff0df7ed49e06dfc4acfce3d3f7eb48afa68be04763ee8c08354df50a07
+- kind: project-relative
+  target: copilot
+  value: .github/hooks/plugin-hooks.json
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:9f4b86ee6102f1c838aa2bc2a579478855e9fbcc4d111c44466167be10c67601
+- kind: project-relative
+  target: copilot
   value: .github/hooks/ponytail-copilot-hooks.json
   runtime: null
   scope: project
@@ -402,6 +1123,78 @@ deployments:
   - dietrichgebert/ponytail
   active_owner: dietrichgebert/ponytail
   content_hash: sha256:72b8481f1a9d093a38ab3de5a358bf9b8a145f8b20c8837aed51c848fef31d17
+- kind: project-relative
+  target: copilot
+  value: .github/hooks/scripts/plugin/skills/impeccable/scripts/VERSION
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:9940d4b5219de8404015bc18af844c88d7e9e9105682a5d47b1d369d027dbd25
+- kind: project-relative
+  target: copilot
+  value: .github/hooks/scripts/plugin/skills/impeccable/scripts/impeccable
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:39d9600489073e227e4f4d55c451ce4252a6632ed7ae37923efbbcbc91f16d07
+- kind: project-relative
+  target: copilot
+  value: .github/hooks/scripts/plugin/skills/impeccable/scripts/impeccable.cmd
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:69cad1ae7355825ef320ac9638a1c9675ba9fda01c9a0fa12244cc4a1973e550
+- kind: project-relative
+  target: copilot
+  value: .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser-dom.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:24f09f2597b9b55a1e2c4acd2ae5c95db5c8615cfc20aa07d1a3950538ad5c4a
+- kind: project-relative
+  target: copilot
+  value: .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser-ignores.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:c1cb6877ca99a0c1b38ba0c7d59f32702d3022f6821d8045f7133f7c40b6362f
+- kind: project-relative
+  target: copilot
+  value: .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser-session.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:42831c3cd874346d8e7f120808d91e6ed3cda5c3eca6eefd76b126659536bc87
+- kind: project-relative
+  target: copilot
+  value: .github/hooks/scripts/plugin/skills/impeccable/scripts/live-browser.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:d7f1ee3fdfc423e90268e9c666dce61b2180b62431dbb6ecfc48bca65398a1f8
+- kind: project-relative
+  target: copilot
+  value: .github/hooks/scripts/plugin/skills/impeccable/scripts/modern-screenshot.umd.js
+  runtime: null
+  scope: project
+  owners:
+  - pbakaus/impeccable/plugin
+  active_owner: pbakaus/impeccable/plugin
+  content_hash: sha256:bb36665889124a0b6e15f16045265737449c3bdcf2712cdb08af3cfa01563e2b
 - kind: project-relative
   target: copilot
   value: .github/instructions/use-ste.instructions.md
