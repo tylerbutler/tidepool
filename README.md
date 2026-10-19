@@ -62,11 +62,23 @@ quorum settings at that reference; later approvals remain in the delta tail.
 
 ## Deploy to Cloudflare
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool)
+Deploy core first, then the admin and token service in the same Cloudflare
+account. Use the same `JWT_SECRET` and `TENANT_ID` for both deployments.
+
+| Deployment | Includes | Deploy |
+| --- | --- | --- |
+| Core Tidepool | Document Worker, SQLite Durable Objects, and R2 | [![Deploy core Tidepool to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool) |
+| Admin and token service | `/admin`, its stylesheet, and `/tokens` | [![Deploy admin and token service to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool/tree/main/token-service) |
+
+For the second deployment, select your core Worker's name as the `TIDEPOOL`
+service target; the default is `tidepool`. Choose Access authentication or
+anonymous public demo mode. See [Token service](#token-service) for setup.
+
+### Core setup
 
 Use this guided setup to deploy core Tidepool in your Cloudflare account.
 Cloudflare copies this public repository to your Git account, then provisions
-the Worker's R2 bucket and SQLite-backed Durable Objects. The button does not
+the Worker's R2 bucket and SQLite-backed Durable Objects. The core button does not
 install the admin/token Worker or configure Cloudflare Access.
 
 **You must supply `JWT_SECRET`.** Generate your own signing key and enter it
@@ -75,7 +87,7 @@ least 32 UTF-8 bytes, keep a secure backup, and give the same key to the trusted
 backend that issues your document JWTs. Keep it out of browser code, Git, URLs,
 and build logs.
 
-1. Open the button and sign in to Cloudflare and your Git provider.
+1. Open the core button and sign in to Cloudflare and your Git provider.
    You may need to enable R2 and complete account billing setup. Cloudflare
    usage can incur charges.
 2. Choose repository, Worker, and storage names. Use unused resource names
@@ -346,9 +358,9 @@ to preserve its hostname, Access application, and secrets. The service uses
 `jose` to mint HS256 tokens and service bindings to inspect the
 [core connector](#core-connector) in one or more Tidepool Workers.
 
-To deploy both the admin site and token issuer, use this second button:
-
-[![Deploy admin and token service to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool/tree/main/token-service)
+Use the **Admin and token service** button under
+[Deploy to Cloudflare](#deploy-to-cloudflare) to deploy both the admin site
+and token issuer.
 
 The self-contained [admin/token template](token-service/README.md) includes the
 admin HTML and stylesheet. It connects to core through `TidepoolConnector`,
