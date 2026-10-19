@@ -6,12 +6,12 @@ import type {
 	DocumentPage,
 } from "../token-service/src/connector.js";
 import { bytes, errorResponse, HttpError, record } from "./common.js";
-import { directoryPrefix } from "./directory.js";
+import { directoryObject, directoryPrefix } from "./directory.js";
 import type { DocumentDO } from "./document.js";
 
 interface ConnectorEnv {
 	TENANT_ID: string;
-	CONTENT: R2Bucket;
+	CONTENT?: R2Bucket;
 	DOCUMENTS: DurableObjectNamespace<DocumentDO>;
 }
 
@@ -49,6 +49,11 @@ export class TidepoolConnector
 					400,
 					"Provide a prefix of at most 256 UTF-8 bytes and a cursor of at most 2048 bytes",
 				);
+			if (!this.env.CONTENT) {
+				if (cursor && !cursor.startsWith(encodeURIComponent(prefix)))
+					throw new HttpError(400, "Directory cursor does not match prefix");
+				return directoryObject(this.env).listDocuments(prefix, cursor);
+			}
 			const root = await directoryPrefix(this.env.TENANT_ID);
 			const page = await this.env.CONTENT.list({
 				prefix: `${root}${encodeURIComponent(prefix)}`,

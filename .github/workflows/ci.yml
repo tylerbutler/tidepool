@@ -23,6 +23,14 @@ jobs:
         with:
           node-version: "24"
       - run: corepack enable
+      - name: Check the standalone SQLite-only template
+        run: |
+          node scripts/sync-sqlite-template.mjs --check
+          cp -R sqlite-only "$RUNNER_TEMP/tidepool-sqlite"
+          cd "$RUNNER_TEMP/tidepool-sqlite"
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm build
       - name: Check the standalone token-service template
         run: |
           cp -R token-service "$RUNNER_TEMP/tidepool-token-service"

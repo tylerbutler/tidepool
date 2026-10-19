@@ -43,7 +43,11 @@ export function createTestClient(
 	};
 }
 
-export async function startRuntime(persist?: string, connector = false) {
+export async function startRuntime(
+	persist?: string,
+	connector = false,
+	r2 = true,
+) {
 	const runtime = new Miniflare({
 		name: "tidepool-tests",
 		rootPath: fileURLToPath(new URL("../", import.meta.url)),
@@ -53,7 +57,7 @@ export async function startRuntime(persist?: string, connector = false) {
 		compatibilityDate: "2026-07-30",
 		unsafeInspectDurableObjects: true,
 		durableObjects: { DOCUMENTS: { className: "DocumentDO", useSQLite: true } },
-		r2Buckets: ["CONTENT"],
+		r2Buckets: r2 ? ["CONTENT"] : [],
 		bindings: { TENANT_ID: "fluid", JWT_SECRET: secret },
 		...(connector
 			? {

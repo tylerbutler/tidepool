@@ -1,0 +1,37 @@
+{
+	"name": "@tylerbu/tidepool-sqlite",
+	"version": "0.0.0",
+	"private": true,
+	"description": "A Fluid Framework server using SQLite Durable Objects, without R2",
+	"license": "MIT",
+	"type": "module",
+	"packageManager": "pnpm@10.24.0",
+	"cloudflare": {
+		"bindings": {
+			"JWT_SECRET": {
+				"description": "**Supply your own signing key.** Generate one with `openssl rand -hex 32` (at least 32 UTF-8 bytes). Enter it here as a runtime secret, keep a secure backup, and use the same key in your trusted JWT issuer. Tidepool does not generate this key or issue document JWTs."
+			},
+			"TENANT_ID": {
+				"description": "Tenant for this Tidepool. Defaults to `fluid`; document JWTs must use this tenant."
+			},
+			"DOCUMENTS": {
+				"description": "SQLite-backed Durable Objects for all document data, connections, and the document directory. No R2 bucket is needed."
+			}
+		}
+	},
+	"scripts": {
+		"build:protocol": "node scripts/build-protocol.mjs",
+		"build": "pnpm build:protocol && wrangler deploy --dry-run --outdir dist",
+		"deploy": "wrangler deploy",
+		"typecheck": "pnpm build:protocol && tsc --noEmit",
+		"dev": "pnpm build:protocol && wrangler dev --ip 127.0.0.1 --port 8787"
+	},
+	"dependencies": {
+		"jose": "6.1.3"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "5.20261010.1",
+		"typescript": "~5.9.3",
+		"wrangler": "4.149.0"
+	}
+}

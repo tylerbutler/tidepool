@@ -2,7 +2,7 @@
 	"name": "@tylerbu/tidepool",
 	"version": "0.0.0",
 	"private": true,
-	"description": "A Fluid Framework server for Cloudflare Workers, Durable Objects, and R2",
+	"description": "A Fluid Framework server for Cloudflare Workers, SQLite Durable Objects, and optional R2",
 	"license": "MIT",
 	"type": "module",
 	"packageManager": "pnpm@10.24.0",
@@ -15,7 +15,7 @@
 				"description": "Tenant for this Tidepool. Defaults to `fluid`; document JWTs must use this tenant."
 			},
 			"CONTENT": {
-				"description": "R2 bucket for document content and the document directory. Cloudflare provisions this bucket in your account."
+				"description": "R2 bucket for document content and the document directory. This template provisions R2; choose the separate SQLite-only template to deploy without a bucket."
 			},
 			"DOCUMENTS": {
 				"description": "SQLite-backed Durable Objects for document sequencing, state, and connections."
@@ -23,6 +23,7 @@
 		}
 	},
 	"scripts": {
+		"sync:sqlite-template": "node scripts/sync-sqlite-template.mjs",
 		"build:protocol": "node scripts/build-protocol.mjs",
 		"test:protocol": "cd protocol && gleam run --target javascript",
 		"build": "pnpm build:protocol && wrangler deploy --dry-run --outdir dist && pnpm build:admin && pnpm build:tokens",
@@ -30,7 +31,7 @@
 		"build:tokens": "pnpm --dir token-service build",
 		"deploy": "wrangler deploy --config wrangler.jsonc",
 		"typecheck": "pnpm build:protocol && tsc --noEmit",
-		"check": "biome check src test scripts token-service/src token-service/package.json token-service/tsconfig.json token-service/wrangler.jsonc package.json tsconfig.json vitest.config.ts && cd protocol && gleam format --check src",
+		"check": "node scripts/sync-sqlite-template.mjs --check && biome check src test scripts token-service/src token-service/package.json token-service/tsconfig.json token-service/wrangler.jsonc package.json tsconfig.json vitest.config.ts && cd protocol && gleam format --check src",
 		"format": "biome check --write src test scripts token-service/src token-service/package.json token-service/tsconfig.json token-service/wrangler.jsonc package.json tsconfig.json vitest.config.ts && cd protocol && gleam format src",
 		"test": "pnpm test:protocol && pnpm test:workers && pnpm test:acceptance",
 		"test:workers": "pnpm build && vitest run --exclude test/acceptance.test.ts",

@@ -1,8 +1,9 @@
 # Tidepool
 
 Tidepool is an experimental Fluid Framework server for Cloudflare Workers,
-SQLite-backed Durable Objects, and R2. It supports the unmodified official
-Routerlicious driver, one configured tenant, and multiple documents.
+SQLite-backed Durable Objects, and optional R2 storage. It supports the
+unmodified official Routerlicious driver, one configured tenant, and multiple
+documents.
 
 The server does not interpret DDS contents. The client's Fluid runtime handles
 SharedMap, SharedTree, SharedString, and other DDS logic. The current container
@@ -31,7 +32,7 @@ DocumentDO: one object for JSON.stringify([tenant, document])
     |-- SQLite: operations, sequence checkpoint, clients, commits, refs, budget
     |-- Hibernatable WebSockets and heartbeat alarms
     |
-    +-- R2: immutable tenant-shared blobs and trees
+    +-- Content: R2 tenant-shared blobs and trees, or per-document SQLite
 ```
 
 The TypeScript adapters handle Workers APIs, Web Crypto authentication, and
@@ -43,10 +44,19 @@ tests also execute the generated JavaScript inside workerd.
 
 The DO commits operation sequence numbers, client sequence/reference state,
 and the operation together. It sends acknowledgements and broadcasts after the
-SQLite transaction. R2 uploads precede summary publication. One SQLite
+SQLite transaction. Content writes precede summary publication. One SQLite
 transaction publishes the document-owned head and its sequenced summary ack.
 A failed publication can leave staged immutable content, but cannot publish
 an ack or head without the corresponding durable operations.
+
+When the `CONTENT` R2 binding is absent, each document stores its immutable
+blobs and trees in SQLite. The server splits content into 1 MiB chunks to stay
+below SQLite's 2 MB row limit and writes the chunks in one transaction.
+The document budget and protocol limits apply to both storage modes.
+SQLite-only deployments use a separate SQLite Durable Object for the document
+directory; admin listing and exact-ID inspection work in both modes.
+An unavailable bound R2 bucket returns an error; it does not enable SQLite
+storage.
 
 The DO restores client records and the sequence checkpoint from SQLite. It
 does not replay the operation log on each wake. Hibernation keeps existing
@@ -67,19 +77,22 @@ account. Use the same `JWT_SECRET` and `TENANT_ID` for both deployments.
 
 | Deployment | Includes | Deploy |
 | --- | --- | --- |
-| Core Tidepool | Document Worker, SQLite Durable Objects, and R2 | [![Deploy core Tidepool to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool) |
+| Core with R2 | Document Worker, SQLite Durable Objects, and R2 | [![Deploy Tidepool with R2 to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool) |
+| Core without R2 | Document Worker and SQLite Durable Objects only | [![Deploy Tidepool without R2 to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool/tree/main/sqlite-only) |
 | Admin and token service | `/admin`, its stylesheet, and `/tokens` | [![Deploy admin and token service to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool/tree/main/token-service) |
 
 For the second deployment, select your core Worker's name as the `TIDEPOOL`
-service target; the default is `tidepool`. Choose Access authentication or
-anonymous public demo mode. See [Token service](#token-service) for setup.
+service target; the default is `tidepool` for R2 and `tidepool-sqlite` for
+SQLite-only. Choose Access authentication or anonymous public demo mode.
+See [Token service](#token-service) for setup.
 
 ### Core setup
 
 Use this guided setup to deploy core Tidepool in your Cloudflare account.
-Cloudflare copies this public repository to your Git account, then provisions
-the Worker's R2 bucket and SQLite-backed Durable Objects. The core button does not
-install the admin/token Worker or configure Cloudflare Access.
+Cloudflare copies the selected template to your Git account, then provisions
+its SQLite-backed Durable Objects and, for the R2 button, its R2 bucket.
+Neither core button installs the admin/token Worker or configures Cloudflare
+Access.
 
 **You must supply `JWT_SECRET`.** Generate your own signing key and enter it
 in Cloudflare's deployment form. Tidepool does not generate this key. Use at
@@ -88,8 +101,8 @@ backend that issues your document JWTs. Keep it out of browser code, Git, URLs,
 and build logs.
 
 1. Open the core button and sign in to Cloudflare and your Git provider.
-   You may need to enable R2 and complete account billing setup. Cloudflare
-   usage can incur charges.
+   For the R2 option, you may need to enable R2 and complete account billing
+   setup. Cloudflare usage can incur charges.
 2. Choose repository, Worker, and storage names. Use unused resource names
    when creating a separate installation.
 3. Generate a key outside Tidepool with `openssl rand -hex 32`, then enter it
@@ -98,8 +111,9 @@ and build logs.
 4. Check the build and deploy commands. Use `pnpm build` and
    `pnpm run deploy`. The build helper downloads and verifies a pinned Gleam
    compiler if the Linux x86_64 build environment has none. The build also
-   checks both optional admin/token configurations, but the deploy command
-   deploys core only.
+   checks both optional admin/token configurations in the R2 template.
+   The SQLite-only template builds core only. Both deploy commands deploy
+   core only.
 5. Open `https://<your-worker-host>/health` after deployment. A 200 response
    checks configuration; it does not verify collaboration or persistence.
 
@@ -127,6 +141,31 @@ requires its own deployment, with Access by default or explicit anonymous mode.
 The button flow and its blank-secret prompt remain unverified in the live
 Cloudflare dashboard. See Cloudflare's [deploy-button documentation](https://developers.cloudflare.com/workers/platform/deploy-buttons/)
 for account setup and supported resource provisioning.
+
+### SQLite-only setup
+
+The **Core without R2** button uses the self-contained
+[`sqlite-only/`](sqlite-only/README.md) template. It needs no R2 binding
+or bucket. Its default Worker name is `tidepool-sqlite`; use that name as
+the admin/token service's `TIDEPOOL` target unless you rename it.
+
+For local SQLite-only use, run the setup commands inside `sqlite-only/`.
+In an existing source checkout, you can instead remove the `r2_buckets`
+section from your Wrangler config before starting a new installation.
+The server selects SQLite when `CONTENT` is absent; no additional variable
+is necessary.
+
+**Do not change storage modes on a populated deployment.** There is no
+content or directory migration between R2 and SQLite. Removing or adding
+`CONTENT` makes content stored in the other mode unavailable; it does not
+copy or delete it. SQLite content belongs to one document, so identical
+content in different documents uses separate physical storage.
+
+Cloudflare copies only the button's selected subdirectory. The SQLite-only
+template includes its source, protocol, dependencies, and config so it can
+build outside this repository. Edit the main sources, then run
+`pnpm sync:sqlite-template` to update those copies. CI checks for drift and
+builds the template in isolation.
 
 ## Local setup
 
@@ -198,6 +237,7 @@ Run these from the repository root:
 | `pnpm test:acceptance` | Official SharedMap summary/reload test |
 | `pnpm measure:local` | Print a bounded loopback workload measurement |
 | `pnpm dev` | Persistent local Worker |
+| `pnpm sync:sqlite-template` | Update the self-contained SQLite-only deploy template from the main sources |
 
 `cd protocol && gleam run --target erlang` runs the same protocol assertion
 harness on Erlang. The CI workflow installs this package and runs the local
@@ -213,7 +253,7 @@ the core deploy command. Neither job deploys the Worker.
 | Stored encoded operation | 1 MiB, including sequenced metadata |
 | HTTP request body | 16 MiB, enforced during streaming reads |
 | Version-list aggregate reads / encoded response | 16 MiB each |
-| Logical document budget | 64 MiB for operations, commits, and reserved R2 content |
+| Logical document budget | 64 MiB for operations, commits, and reserved content in either storage mode |
 | Cleanup reserve | 1 MiB of that budget, unavailable to new content/normal operations |
 | Connections per document | 128, including unauthenticated sockets |
 | Client metadata | 8 KiB |
@@ -239,10 +279,10 @@ Either overflow returns HTTP 413 without a partial version list.
 The budget counts encoded payload bytes, not SQLite page/index overhead.
 The duplicate-retry index adds physical SQLite storage and an index write for
 each appended operation; the logical budget does not include that overhead.
-Each document reserves its reachable R2 content even when another document
-already uploaded it. Retries of the same immutable key do not add another
-charge. A failed R2 write keeps its reservation, so a retry can use it; abandoned
-uploads and staged commits still consume budget. Conflicting encoded sizes for
+Each document reserves its reachable content, including R2 content that another
+document already uploaded. Retries of the same immutable key do not add another
+charge. A failed content write keeps its reservation, so a retry can use it.
+Abandoned uploads and staged commits still consume budget. Conflicting encoded sizes for
 the same reservation return an error. There is no garbage collector.
 
 With a document token that includes `doc:read`,
@@ -263,7 +303,7 @@ and logical capacity. For an empty document:
 }
 ```
 
-`usedBytes` includes encoded operations, commits, and reserved R2 content.
+`usedBytes` includes encoded operations, commits, and reserved content.
 `remainingWriteBytes` is
 `max(0, budgetBytes - cleanupReserveBytes - usedBytes)`. Cleanup can consume the
 reserve after normal writes reach their limit; remaining write capacity stays
@@ -306,9 +346,10 @@ container, requests a real updated Fluid summary, checks its accepted commit
 and nonzero checkpoint, adds later edits, and loads a third container. It checks
 that the snapshot includes the early edits and that bootstrap starts at that
 checkpoint with a nonempty delta tail. It then restarts the local runtime
-against the same SQLite/R2 directories and checks the accepted commit and
+against the same storage directories and checks the accepted commit and
 SharedMap state again. An agreed quorum setting must also survive summary
 loading and the runtime restart.
+The test runs with R2 enabled and with no R2 binding.
 
 One local macOS loopback run with two writers and 50 sequential 128-byte payloads
 reported p50 fan-out latency of 1.33 ms and p95 of 1.72 ms. The first operation
@@ -515,7 +556,7 @@ mode; selecting anonymous mode is an explicit deployment choice.
 ## Core connector
 
 Every core Tidepool Worker exports the `TidepoolConnector` RPC entrypoint from
-`src/connector.ts`. It uses that Worker's tenant, Durable Objects, and R2 bucket.
+`src/connector.ts`. It uses that Worker's tenant and storage bindings.
 It does not depend on the admin site, Cloudflare Access, or the token Worker.
 The public document HTTP handler exposes no connector routes.
 
@@ -610,10 +651,11 @@ not wake every document. The server does not interpret or display DDS contents.
 There are no edit or delete controls.
 
 Directory entries are small R2 objects under `directory/v1/`, separate from
-the historian's immutable content. Their storage is not part of a document's
+the historian's immutable content, or rows in a separate SQLite Durable Object
+when `CONTENT` is absent. Their storage is not part of a document's
 64 MiB logical budget. New documents register after their creation is durable.
 Existing documents register on authenticated REST access, WebSocket admission,
-or a successful admin ID lookup. A durable registration flag avoids an R2 write
+or a successful admin ID lookup. A durable registration flag avoids a directory write
 on each later access. The index timestamp is not a document creation timestamp;
 creation dates are available only for documents created after this feature.
 
@@ -626,8 +668,8 @@ Directory storage failures return an explicit error rather than an empty list.
 If registration fails after a document's creation commits, creation returns a
 retryable 503 even though the document exists. Open that document ID or access
 it again to retry registration; repeating creation can return 409. Directory
-registration and document creation cannot share a transaction across R2 and
-SQLite. Neither an admin inspection nor registration appends document operations.
+registration and document creation cannot share a transaction across the two
+storage locations. Neither an admin inspection nor registration appends document operations.
 
 The interface is server-rendered and works without JavaScript. Forms, metadata,
 and styles use `Cache-Control: no-store`; a restrictive Content Security Policy
@@ -649,7 +691,9 @@ pnpm exec wrangler deploy
 ```
 
 The config binds `DOCUMENTS` to `DocumentDO`, creates its SQLite class with the
-`v1` migration, and binds `CONTENT` to the named R2 bucket. Set `TENANT_ID`
+`v1` migration, and binds `CONTENT` to the named R2 bucket. For a new SQLite-only
+installation, use the config in `sqlite-only/` and skip bucket creation.
+Set `TENANT_ID`
 and the permitted browser `ALLOWED_ORIGIN` in Wrangler's variables. If the token
 Worker is deployed, reuse its existing `JWT_SECRET`; otherwise generate a strong
 secret. Set it through `wrangler secret put`; do not put it in config or Git.

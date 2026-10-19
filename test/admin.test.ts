@@ -7,7 +7,8 @@ import { adminResponse } from "../token-service/src/admin.js";
 import { api, connect, createDocument, startRuntime } from "./runtime.js";
 
 let environment: Awaited<ReturnType<typeof startRuntime>>;
-let bindings: Omit<Env, "DOCUMENTS"> & {
+let bindings: Omit<Env, "DOCUMENTS" | "CONTENT"> & {
+	CONTENT: R2Bucket;
 	DOCUMENTS: DurableObjectNamespace<DocumentDO>;
 	TIDEPOOL: ConnectorClient;
 };

@@ -1,3 +1,5 @@
+import type { DocumentDO } from "./document.js";
+
 export const MAX_FRAME_BYTES = 1_048_576;
 export const MAX_HTTP_BYTES = 16 * 1_048_576;
 export const MAX_DOCUMENT_BYTES = 64 * 1_048_576;
@@ -7,8 +9,8 @@ export const PING_TIMEOUT_MS = 20_000;
 export const RETRY_AFTER_MS = 1000;
 
 export interface Env {
-	DOCUMENTS: DurableObjectNamespace;
-	CONTENT: R2Bucket;
+	DOCUMENTS: DurableObjectNamespace<DocumentDO>;
+	CONTENT?: R2Bucket;
 	TENANT_ID: string;
 	JWT_SECRET: string;
 	ALLOWED_ORIGIN?: string;

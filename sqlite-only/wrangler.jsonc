@@ -1,0 +1,28 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "tidepool-sqlite",
+	"main": "src/worker.ts",
+	"compatibility_date": "2026-07-30",
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "DOCUMENTS",
+				"class_name": "DocumentDO"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"DocumentDO"
+			]
+		}
+	],
+	"vars": {
+		"TENANT_ID": "fluid"
+	},
+	"observability": {
+		"enabled": true
+	}
+}

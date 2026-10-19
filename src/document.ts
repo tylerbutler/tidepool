@@ -15,7 +15,7 @@ import {
 	record,
 	text,
 } from "./common.js";
-import { directoryPrefix } from "./directory.js";
+import { directoryObject, directoryPrefix } from "./directory.js";
 import { Historian } from "./historian.js";
 import { type Operation, operation, protocol } from "./protocol.js";
 import { type ClientRow, Storage } from "./storage.js";
@@ -51,7 +51,7 @@ export class DocumentDO extends DurableObject<Env> {
 
 	private historian(tenant: string, document: string, origin: string) {
 		return new Historian(
-			this.env.CONTENT,
+			this.env.CONTENT ?? this.store,
 			this.store,
 			tenant,
 			document,
@@ -61,10 +61,69 @@ export class DocumentDO extends DurableObject<Env> {
 
 	private async register(tenant: string, document: string): Promise<void> {
 		const state = this.store.state();
-		if (!state.created || state.directoryRegistered) return;
-		const key = await directoryPrefix(tenant, document);
-		await this.env.CONTENT.put(key, JSON.stringify({ tenant, document }));
-		this.store.save({ ...this.store.state(), directoryRegistered: true });
+		if (!state.created) return;
+		if (this.env.CONTENT) {
+			if (state.directoryRegistered) return;
+			const key = await directoryPrefix(tenant, document);
+			await this.env.CONTENT.put(key, JSON.stringify({ tenant, document }));
+			this.store.save({ ...this.store.state(), directoryRegistered: true });
+		} else {
+			if (state.sqliteDirectoryRegistered) return;
+			await directoryObject(this.env).registerDocument(document);
+			this.store.save({
+				...this.store.state(),
+				sqliteDirectoryRegistered: true,
+			});
+		}
+	}
+
+	private directorySql() {
+		if (!this.ctx.id.equals(directoryObject(this.env).id))
+			throw new HttpError(400, "Invalid directory identity");
+		const sql = this.ctx.storage.sql;
+		sql.exec(
+			"CREATE TABLE IF NOT EXISTS directory (key TEXT PRIMARY KEY, indexedAt TEXT NOT NULL)",
+		);
+		return sql;
+	}
+
+	registerDocument(document: string): void {
+		if (typeof document !== "string" || !document || bytes(document) > 256)
+			throw new HttpError(400, "Invalid document ID");
+		this.directorySql().exec(
+			"INSERT OR IGNORE INTO directory VALUES (?, ?)",
+			encodeURIComponent(document),
+			new Date().toISOString(),
+		);
+	}
+
+	listDocuments(prefix: string, cursor: string) {
+		if (
+			typeof prefix !== "string" ||
+			bytes(prefix) > 256 ||
+			typeof cursor !== "string" ||
+			bytes(cursor) > 2048
+		)
+			throw new HttpError(400, "Invalid directory query");
+		const keyPrefix = encodeURIComponent(prefix);
+		if (cursor && !cursor.startsWith(keyPrefix))
+			throw new HttpError(400, "Directory cursor does not match prefix");
+		const rows = this.directorySql()
+			.exec<{ key: string; indexedAt: string }>(
+				"SELECT key,indexedAt FROM directory WHERE key>=? AND key<? AND key>? ORDER BY key LIMIT 51",
+				keyPrefix,
+				`${keyPrefix}\uFFFF`,
+				cursor,
+			)
+			.toArray();
+		const page = rows.slice(0, 50);
+		return {
+			documents: page.map(({ key, indexedAt }) => ({
+				id: decodeURIComponent(key),
+				indexedAt,
+			})),
+			cursor: rows.length > 50 ? (rows[49]?.key ?? null) : null,
+		};
 	}
 
 	async inspect(tenant: string, document: string) {

@@ -16,6 +16,7 @@ import {
 } from "@fluidframework/fluid-static/internal";
 import type { IQuorum } from "@fluidframework/protocol-definitions";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { ConnectorClient } from "../src/connector.js";
 import { createAdapter, createClient, schema } from "./client.js";
 import * as helpers from "./runtime.js";
 
@@ -31,12 +32,12 @@ function assertProposalQuorum(
 		throw new Error("Expected the runtime quorum proposal API");
 }
 
-describe("Tidepool", () => {
+describe.each([true, false])("Tidepool (R2: %s)", (r2) => {
 	let environment: Awaited<ReturnType<typeof helpers.startRuntime>>;
 	let persistencePath: string | undefined;
 	beforeAll(async () => {
 		persistencePath = resolve(await mkdtemp(".tidepool-acceptance-"));
-		environment = await helpers.startRuntime(persistencePath);
+		environment = await helpers.startRuntime(persistencePath, true, r2);
 	});
 	afterAll(async () => {
 		try {
@@ -254,7 +255,14 @@ describe("Tidepool", () => {
 		}
 
 		await environment.runtime.dispose();
-		environment = await helpers.startRuntime(persistencePath);
+		environment = await helpers.startRuntime(persistencePath, true, r2);
+		const { TIDEPOOL } = await environment.runtime.getBindings<{
+			TIDEPOOL: ConnectorClient;
+		}>();
+		expect(await TIDEPOOL.listDocuments({ prefix: id })).toMatchObject({
+			ok: true,
+			value: { documents: [{ id }], cursor: null },
+		});
 		const restartedService = await helpers.service(environment.base, id);
 		try {
 			const storage = await restartedService.connectToStorage();

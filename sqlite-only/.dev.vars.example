@@ -1,0 +1,6 @@
+# Generate your own key with: openssl rand -hex 32
+# Enter it as JWT_SECRET in Cloudflare's deployment form, or set a runtime
+# secret afterward with: pnpm exec wrangler secret put JWT_SECRET
+# Tidepool does not generate this key. Keep a secure backup and use the same
+# key in the trusted application or separate service that issues document JWTs.
+JWT_SECRET=

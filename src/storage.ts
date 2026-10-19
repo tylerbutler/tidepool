@@ -4,7 +4,7 @@ import {
 	MAX_DOCUMENT_BYTES,
 	MAX_FRAME_BYTES,
 } from "./common.js";
-import type { HistorianStore } from "./historian.js";
+import type { HistorianBucket, HistorianStore } from "./historian.js";
 import { type Operation, operation, type ProtocolEvent } from "./protocol.js";
 
 interface State {
@@ -18,6 +18,7 @@ interface State {
 	created: boolean;
 	createdAt?: string;
 	directoryRegistered?: boolean;
+	sqliteDirectoryRegistered?: boolean;
 }
 
 export interface ClientRow extends Record<string, SqlStorageValue> {
@@ -32,7 +33,7 @@ export interface ClientRow extends Record<string, SqlStorageValue> {
 
 export const CLEANUP_RESERVE = 1_048_576;
 
-export class Storage implements HistorianStore {
+export class Storage implements HistorianStore, HistorianBucket {
 	private readonly sql: SqlStorage;
 
 	constructor(private readonly storage: DurableObjectStorage) {
@@ -58,6 +59,9 @@ export class Storage implements HistorianStore {
 		);
 		sql.exec(
 			"CREATE TABLE IF NOT EXISTS content (key TEXT PRIMARY KEY, size INTEGER NOT NULL)",
+		);
+		sql.exec(
+			"CREATE TABLE IF NOT EXISTS content_objects (key TEXT NOT NULL, part INTEGER NOT NULL, body BLOB NOT NULL, PRIMARY KEY (key,part))",
 		);
 	}
 
@@ -314,6 +318,54 @@ export class Storage implements HistorianStore {
 			}
 			this.sql.exec("INSERT INTO content VALUES (?, ?)", key, size);
 			this.save({ ...state, used: state.used + size });
+		});
+	}
+
+	async get(key: string) {
+		const rows = this.sql
+			.exec<{ body: ArrayBuffer }>(
+				"SELECT body FROM content_objects WHERE key=? ORDER BY part",
+				key,
+			)
+			.toArray();
+		if (!rows.length) return null;
+		const data = new Uint8Array(
+			rows.reduce((size, row) => size + row.body.byteLength, 0),
+		);
+		let offset = 0;
+		for (const row of rows) {
+			data.set(new Uint8Array(row.body), offset);
+			offset += row.body.byteLength;
+		}
+		return {
+			text: async () => new TextDecoder("utf-8", { fatal: true }).decode(data),
+		};
+	}
+
+	async put(key: string, body: string) {
+		return this.storage.transactionSync(() => {
+			this.reserveContent(key, bytes(body));
+			if (
+				this.sql
+					.exec("SELECT 1 FROM content_objects WHERE key=? LIMIT 1", key)
+					.toArray().length
+			)
+				return null;
+			const data = new TextEncoder().encode(body);
+			// SQLite rows are limited to 2 MB; uploads can be up to 16 MiB.
+			for (
+				let offset = 0;
+				offset < data.length || offset === 0;
+				offset += MAX_FRAME_BYTES
+			) {
+				this.sql.exec(
+					"INSERT INTO content_objects VALUES (?, ?, ?)",
+					key,
+					offset / MAX_FRAME_BYTES,
+					data.subarray(offset, offset + MAX_FRAME_BYTES),
+				);
+			}
+			return { etag: key };
 		});
 	}
 
