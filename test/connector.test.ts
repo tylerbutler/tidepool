@@ -61,6 +61,35 @@ beforeAll(async () => {
 					],
 				},
 			},
+			{
+				name: "public-admin",
+				rootPath: root,
+				modulesRoot: root,
+				modules: true,
+				scriptPath: `${root}/public-admin-harness.js`,
+				script: `
+					import admin from "./dist/admin/token-worker.js";
+					export default {
+						fetch(request, env, ctx) { return admin.fetch(request, env, ctx); }
+					};
+				`,
+				modulesRules: [
+					{ type: "ESModule", include: ["**/*.js"] },
+					{ type: "Text", include: ["**/*.css"] },
+				],
+				compatibilityDate: "2026-07-30",
+				serviceBindings: {
+					POOL_A: { name: "pool-a", entrypoint: "TidepoolConnector" },
+					POOL_B: { name: "pool-b", entrypoint: "TidepoolConnector" },
+				},
+				bindings: {
+					TOKEN_AUTH_MODE: "anonymous",
+					TIDEPOOLS: [
+						{ id: "a", label: "Pool A", binding: "POOL_A" },
+						{ id: "b", label: "Pool B", binding: "POOL_B" },
+					],
+				},
+			},
 		],
 	});
 	await runtime.ready;
@@ -156,6 +185,27 @@ it("uses the admin Access identity without a signing key and scopes all navigati
 	});
 	expect(tokens.status).toBe(503);
 	expect(await tokens.json()).not.toHaveProperty("jwt");
+});
+
+it("makes every configured connection public in explicit anonymous mode without Access or signing credentials", async () => {
+	const admin = await runtime.getWorker("public-admin");
+	for (const [id, own, other] of [
+		["a", "a-only", "b-only"],
+		["b", "b-only", "a-only"],
+	]) {
+		const response = await admin.fetch(
+			`https://issuer.example/admin?tidepool=${id}&document=shared`,
+		);
+		expect(response.status).toBe(200);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		const markup = await response.text();
+		expect(markup).toContain(own);
+		expect(markup).not.toContain(other);
+		expect(markup).toContain("Sequence state");
+	}
+	const health = await admin.fetch("https://issuer.example/health");
+	expect(health.status).toBe(200);
+	expect(await health.json()).toEqual({ status: "ok", tokenEndpoint: null });
 });
 
 it("validates RPC inputs at the core boundary, including UTF-8 limits and caller-selected tenants", async () => {

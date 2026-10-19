@@ -23,6 +23,13 @@ jobs:
         with:
           node-version: "24"
       - run: corepack enable
+      - name: Check the standalone token-service template
+        run: |
+          cp -R token-service "$RUNNER_TEMP/tidepool-token-service"
+          cd "$RUNNER_TEMP/tidepool-token-service"
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm build
       - run: pnpm install --frozen-lockfile
       - name: Build without a preinstalled Gleam compiler
         run: |

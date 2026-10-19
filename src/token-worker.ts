@@ -1,23 +1,14 @@
-import { SignJWT } from "jose";
+import { HttpError as TokenHttpError } from "../token-service/src/http.js";
+import tokenWorker, {
+	accessUser,
+	authMode,
+	type TokenEnv as TokenServiceEnv,
+} from "../token-service/src/worker.js";
 import { type AdminBindings, adminResponse } from "./admin.js";
-import { type AuthEnv, originAllowed } from "./auth.js";
-import { bytes, errorResponse, HttpError, readJson, record } from "./common.js";
+import { originAllowed } from "./auth.js";
+import { errorResponse, HttpError } from "./common.js";
 
-export interface TokenEnv extends AdminBindings {
-	ACCESS_AUDIENCE: string;
-	TENANT_ID?: string;
-	JWT_SECRET?: string;
-	ALLOWED_ORIGIN?: string;
-}
-
-function signingConfiguration(env: TokenEnv): AuthEnv {
-	const { TENANT_ID, JWT_SECRET, ALLOWED_ORIGIN } = env;
-	if (!TENANT_ID || !JWT_SECRET)
-		throw new HttpError(503, "TENANT_ID and JWT_SECRET must be configured");
-	if (bytes(JWT_SECRET) < 32)
-		throw new HttpError(503, "JWT_SECRET must contain at least 32 bytes");
-	return { TENANT_ID, JWT_SECRET, ALLOWED_ORIGIN };
-}
+export interface TokenEnv extends TokenServiceEnv, AdminBindings {}
 
 export default {
 	async fetch(
@@ -25,93 +16,26 @@ export default {
 		env: TokenEnv,
 		ctx: Pick<ExecutionContext, "access">,
 	): Promise<Response> {
+		const url = new URL(request.url);
+		if (url.pathname !== "/admin" && !url.pathname.startsWith("/admin/"))
+			return tokenWorker.fetch(request, env, ctx);
 		let origin: string | undefined;
 		let response: Response;
 		try {
 			originAllowed(request, env);
 			origin = request.headers.get("Origin") ?? undefined;
-			const url = new URL(request.url);
-			if (url.pathname === "/tokens" && request.method === "OPTIONS") {
-				response = new Response(null, {
-					status: 204,
-					headers: {
-						"Access-Control-Allow-Methods": "POST,OPTIONS",
-						"Access-Control-Allow-Headers": "Content-Type",
-					},
-				});
-			} else {
-				if (!env.ACCESS_AUDIENCE)
-					throw new HttpError(503, "ACCESS_AUDIENCE must be configured");
-				if (
-					(url.pathname === "/" || url.pathname === "/health") &&
-					request.method === "GET"
-				) {
-					const tokensConfigured = Boolean(env.TENANT_ID || env.JWT_SECRET);
-					if (tokensConfigured) signingConfiguration(env);
-					response = Response.json({
-						status: "ok",
-						tokenEndpoint: tokensConfigured ? "/tokens" : null,
-					});
-				} else {
-					const admin =
-						url.pathname === "/admin" || url.pathname.startsWith("/admin/");
-					if (!admin && url.pathname !== "/tokens")
-						throw new HttpError(404, "Not found");
-					if (!admin && request.method !== "POST")
-						throw new HttpError(405, "Use POST to request a token");
-					if (!ctx.access || ctx.access.aud !== env.ACCESS_AUDIENCE)
-						throw new HttpError(
-							403,
-							"Cloudflare Access authentication required",
-						);
-					const identity = await ctx.access.getIdentity();
-					if (!identity?.user_uuid)
-						throw new HttpError(
-							403,
-							"Cloudflare Access user identity required",
-						);
-					if (admin) {
-						response = await adminResponse(request, env);
-					} else {
-						const signing = signingConfiguration(env);
-						if (
-							request.headers
-								.get("Content-Type")
-								?.split(";")[0]
-								?.trim()
-								.toLowerCase() !== "application/json"
-						)
-							throw new HttpError(415, "Content-Type must be application/json");
-						const body = record(await readJson(request, 2048));
-						if (
-							Object.keys(body).some((key) => key !== "documentId") ||
-							typeof body.documentId !== "string" ||
-							bytes(body.documentId) > 256
-						)
-							throw new HttpError(
-								400,
-								"Provide only documentId, at most 256 UTF-8 bytes",
-							);
-						const issuedAt = Math.floor(Date.now() / 1000);
-						const expiresAt = issuedAt + 15 * 60;
-						const jwt = await new SignJWT({
-							tenantId: signing.TENANT_ID,
-							documentId: body.documentId,
-							user: { id: identity.user_uuid },
-							scopes: ["doc:read", "doc:write", "summary:write"],
-							ver: "1.0",
-						})
-							.setProtectedHeader({ alg: "HS256", typ: "JWT" })
-							.setIssuedAt(issuedAt)
-							.setExpirationTime(expiresAt)
-							.setJti(crypto.randomUUID())
-							.sign(new TextEncoder().encode(signing.JWT_SECRET));
-						response = Response.json({ jwt, expiresAt });
-					}
-				}
-			}
+			const user =
+				authMode(env) === "anonymous"
+					? "anonymous"
+					: await accessUser(env, ctx);
+			response =
+				typeof user === "string" ? await adminResponse(request, env) : user;
 		} catch (error) {
-			response = errorResponse(error);
+			response = errorResponse(
+				error instanceof TokenHttpError
+					? new HttpError(error.status, error.message)
+					: error,
+			);
 		}
 		response.headers.set("Cache-Control", "no-store");
 		response.headers.set("Vary", "Origin");

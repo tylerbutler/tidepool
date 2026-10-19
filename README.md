@@ -86,7 +86,8 @@ and build logs.
 4. Check the build and deploy commands. Use `pnpm build` and
    `pnpm run deploy`. The build helper downloads and verifies a pinned Gleam
    compiler if the Linux x86_64 build environment has none. The build also
-   checks the optional admin bundle, but the deploy command deploys core only.
+   checks the optional admin and token-only bundles, but the deploy command
+   deploys core only.
 5. Open `https://<your-worker-host>/health` after deployment. A 200 response
    checks configuration; it does not verify collaboration or persistence.
 
@@ -109,7 +110,7 @@ clients on another origin, set `ALLOWED_ORIGIN` to the application origin as
 described in [Local setup](#local-setup). Core Tidepool has no JWT issuer:
 use trusted application code or install the separate
 [token service](#token-service). The optional [admin site](#admin-site) also
-requires its own deployment and Access application.
+requires its own deployment, with Access by default or explicit anonymous mode.
 
 The button flow and its blank-secret prompt remain unverified in the live
 Cloudflare dashboard. See Cloudflare's [deploy-button documentation](https://developers.cloudflare.com/workers/platform/deploy-buttons/)
@@ -147,8 +148,9 @@ Wrangler listens on `http://127.0.0.1:8787` and keeps local state under
 `TENANT_ID=fluid`, and sign HS256 tokens with the same secret. Tokens need
 `tenantId`, `documentId`, `user.id`, `scopes`, `iat`, and `exp`. Use an empty
 `documentId` for server-generated document creation. Only trusted application
-code should mint tokens. The document Worker has no token endpoint; the
-optional [Access-protected token Worker](#token-service) runs separately.
+code should hold the signing key. The document Worker has no token endpoint;
+the optional [token Worker](#token-service) runs separately, with Access by
+default or anonymous issuance for disposable public demos.
 
 Set the client's orderer, delta stream, and storage origins to the Worker.
 The [test client](test/client.ts) shows the complete official Loader and
@@ -172,9 +174,10 @@ Run these from the repository root:
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm build` | Gleam JavaScript build and dry-run bundles for both Workers |
+| `pnpm build` | Gleam JavaScript build and dry-run core, admin/token, and token-only bundles |
 | `pnpm build:protocol` | Compile protocol; bootstrap pinned Gleam if absent on Linux x86_64 |
 | `pnpm build:admin` | Admin/token Worker dry-run bundle, without Gleam or R2 |
+| `pnpm build:tokens` | Standalone token-only Worker dry-run bundle, without Gleam or storage |
 | `pnpm run deploy` | Deploy core only; requires approval, cloud credentials, and a prior build |
 | `pnpm typecheck` | Strict TypeScript boundary check |
 | `pnpm check` / `pnpm format` | Biome and Gleam formatting |
@@ -335,14 +338,30 @@ a separate deployment test.
 
 ## Token service
 
-The separate HTTP-only admin/token service uses `src/token-worker.ts` and
+There are two deployment targets for the same token issuer. The combined
+admin/token service uses `src/token-worker.ts` and
 `wrangler.admin.jsonc`. The deployed Worker keeps the name `tidepool-auth` to
 preserve its hostname, Access application, and secrets. It uses the existing
 `jose` dependency to mint the HS256 tokens that the document Worker accepts.
 It also serves the read-only [admin site](#admin-site), using service bindings
 to the [core connector](#core-connector) in one or more Tidepool Workers.
 
-Protect the token service hostname with a self-hosted
+For a token-only installation, use this second button:
+
+[![Deploy token service to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool/tree/main/token-service)
+
+The self-contained [token-service template](token-service/README.md) does not
+install the admin site or bind to storage. Deploy core first, then supply its
+**exact `JWT_SECRET` and `TENANT_ID`** to this issuer. Reuse the signing key,
+not a document JWT. Cloudflare cannot retrieve the existing secret for you;
+you must enter it again. If the form does not prompt for it, add a runtime
+secret through the dashboard or Wrangler as described in the template.
+The live button form and blank-secret prompt remain unverified.
+
+### Authentication modes
+
+`TOKEN_AUTH_MODE` defaults to `access`. In this mode, protect the service
+hostname with a self-hosted
 [Cloudflare Access application](https://developers.cloudflare.com/workers/configuration/cloudflare-access/).
 Configure an explicit email allowlist and the desired login provider, such as
 [email one-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/).
@@ -351,32 +370,53 @@ can create, read, edit, and summarize any document in its configured token
 tenant. They can also inspect all connected Tidepools. A connector binding grants
 inspection, not token issuance. There are no per-document permissions.
 
+Set `TOKEN_AUTH_MODE=anonymous` for a disposable public demo without a login.
+This makes `/tokens` and, in the combined Worker, **all admin routes public**.
+Anyone can list document IDs and inspect metadata for every configured
+Tidepool connection. The admin remains read-only, but the token endpoint lets
+anyone create, read, edit, and summarize any document in its signing tenant.
+Each issuance gets a new random `anonymous:` user ID, not a stable account.
+`ACCESS_AUDIENCE` is not required in this mode.
+
+**Use anonymous mode only for throwaway resources and public data.**
+There is no tenant-wide rate or cost guard. Public requests can incur charges.
+Do not share its signing key with a retained-data deployment or connect its
+public admin to private Tidepools. CORS is not authentication: requests without
+an Origin header remain permitted.
+
+An existing Access application can still intercept requests before the Worker.
+To use anonymous mode, use an unprotected hostname or remove the applicable
+Access protection. Changing the Worker variable does not change Access policies.
+An empty or unknown auth mode returns 503. Missing Access configuration never
+enables anonymous access.
+
 Set these bindings before using the service:
 
 | Binding | Purpose |
 | --- | --- |
 | `TENANT_ID` | Token issuance only: the same tenant as its document Worker |
 | `JWT_SECRET` | Token issuance only: a secret of at least 32 UTF-8 bytes, shared with its document Worker |
-| `ACCESS_AUDIENCE` | The Access application's AUD tag, set in `wrangler.admin.jsonc` variables |
+| `TOKEN_AUTH_MODE` | `access` by default; explicitly set `anonymous` to make token issuance and all configured admin connections public |
+| `ACCESS_AUDIENCE` | Required in Access mode: the Access application's AUD tag |
 | `ALLOWED_ORIGIN` | Optional browser app origin; defaults to the token service origin |
 | `TIDEPOOLS` | Admin only: an array of connection IDs, labels, and service binding names |
 | Named service bindings | Admin only: each targets a core Worker's `TidepoolConnector` entrypoint |
 
 An admin-only deployment can omit both `TENANT_ID` and `JWT_SECRET`. Its admin
-routes still require verified Access identity, `/tokens` returns 503, and
+routes use the selected auth mode, `/tokens` returns 503, and
 `/health` reports `"tokenEndpoint": null`. If either signing setting is present,
 the health check requires both settings to be valid. Connecting more Tidepools
 does not extend `/tokens`: that endpoint still signs for one configured tenant
 and key.
 
-The Worker requires Cloudflare's verified `ctx.access` context and a matching
-audience. It derives `user.id` from the Access user's stable `user_uuid`. Forged
-Access headers, another application's context, and requests that bypass Access
+In Access mode, the Worker requires Cloudflare's verified `ctx.access` context
+and a matching audience. It derives `user.id` from the Access user's stable
+`user_uuid`. Forged Access headers, another application's context, and requests that bypass Access
 cannot mint tokens. Missing signing or audience configuration disables minting.
 Invoke this Worker directly through its protected hostname; Access does not
 forward `ctx.access` through service bindings or static-asset router Workers.
 
-After signing in at the token service hostname, send:
+Sign in at the token service hostname if Access mode is enabled, then send:
 
 ```http
 POST /tokens
@@ -416,8 +456,8 @@ const tokenProvider = {
 };
 ```
 
-Users must sign in at the issuer hostname before making these requests. For
-another browser origin, set `ALLOWED_ORIGIN` and configure Access to
+In Access mode, users must sign in at the issuer hostname before making these
+requests. For another browser origin, set `ALLOWED_ORIGIN` and configure Access to
 [bypass OPTIONS preflights to the Worker](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/cors/).
 The Worker handles preflights without minting tokens and permits credentials
 only for the allowed origin. Cross-origin Access cookies remain subject to
@@ -433,24 +473,29 @@ document Worker first when using the admin site; the admin config refers to its
 named `TidepoolConnector` entrypoint. An older Worker without that export must
 be upgraded before the admin binding can use it.
 
-1. Create the Access application, its allowlist, and login provider in Cloudflare
-   Zero Trust. Set `ACCESS_AUDIENCE` to the application's AUD tag.
+1. Keep `TOKEN_AUTH_MODE=access` and create the Access application, its allowlist,
+   and login provider in Cloudflare Zero Trust. Set `ACCESS_AUDIENCE` to its AUD
+   tag. For a disposable public deployment instead, explicitly select
+   `anonymous` and leave the hostname unprotected by Access.
 2. For token issuance, set `JWT_SECRET` with
    `pnpm exec wrangler secret put JWT_SECRET --config wrangler.admin.jsonc`.
    Use the same secret when deploying the document Worker. Keep a secure backup;
    Cloudflare does not return stored Worker secrets.
 3. Run `pnpm build:admin`, then
    `pnpm exec wrangler deploy --config wrangler.admin.jsonc`.
-4. Sign in at the deployed hostname, check `/health`, and open `/admin`.
+4. Sign in at the deployed hostname if using Access, check `/health`, and
+   open `/admin`.
    If token issuance is configured, request a token. A direct request without
-   verified Access context must not return a JWT or document inspection data.
+   verified Access context must not return a JWT or document inspection data
+   in Access mode; anonymous mode intentionally permits both.
 
 Wrangler's normal OAuth login can deploy Workers but may lack Access write
 permissions. API provisioning needs `Access: Apps and Policies Write` and, for
 email PIN setup, `Access: Organizations, Identity Providers, and Groups Write`.
-If Access setup is unavailable, the Worker can deploy with minting disabled
-until its audience is configured. Local JWT tests do not verify a live Access
-login.
+If Access setup is unavailable in Access mode, the Worker can deploy with
+minting disabled until its audience is configured. Local JWT tests do not
+verify a live Access login. The committed admin configuration stays in Access
+mode; selecting anonymous mode is an explicit deployment choice.
 
 ## Core connector
 
@@ -480,10 +525,11 @@ operations, but can register an existing document in the directory.
 **Trust boundary:** a service binding to this entrypoint grants inspection of
 the entire configured tenant. Only give it to trusted caller Workers. The
 connector does not receive a browser Access session or enforce user permissions;
-the caller must authenticate users before calling it. The admin verifies its
-Access identity before every admin request. All admitted admin users can inspect
-all configured connections, without a second login. No document signing key is
-shared through the connector.
+the caller must enforce its selected access policy before calling it. The admin
+verifies Access identity before every admin request in Access mode. Anonymous
+mode deliberately grants public inspection of every configured connection.
+All admitted admin users can inspect all configured connections, without a
+second login. No document signing key is shared through the connector.
 
 ### Connecting multiple Tidepools
 
@@ -524,11 +570,13 @@ are not supported.
 
 ## Admin site
 
-Open `/admin` on the token service hostname after signing in through
-Cloudflare Access. The admin site uses the same verified Access context,
-audience, and users as `/tokens`. Forged headers and direct requests that
-bypass Access cannot read the directory, metadata, or stylesheet. The site
-does not introduce another login, permission tier, or browser JWT.
+Open `/admin` on the combined admin/token service hostname. The admin and
+`/tokens` use the same `TOKEN_AUTH_MODE`. In Access mode, sign in through
+Cloudflare Access; both use the same verified context, audience, and users.
+Forged headers and requests that bypass Access cannot read the directory,
+metadata, or stylesheet in that mode. In anonymous mode, all configured
+connections and admin routes, including stylesheets, are public without a login.
+The site does not introduce another login, permission tier, or browser JWT.
 
 Choose a Tidepool and select **Connect** to browse that deployment. The first
 configured connection is the default when no connection ID is supplied; an

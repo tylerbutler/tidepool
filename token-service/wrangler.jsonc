@@ -1,0 +1,14 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "tidepool-tokens",
+	"main": "src/worker.ts",
+	"compatibility_date": "2026-07-30",
+	"workers_dev": true,
+	"preview_urls": false,
+	"vars": {
+		"TENANT_ID": "fluid",
+		"TOKEN_AUTH_MODE": "access",
+		"ACCESS_AUDIENCE": ""
+	},
+	"observability": { "enabled": true }
+}

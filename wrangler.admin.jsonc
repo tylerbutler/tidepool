@@ -10,6 +10,7 @@
   ],
   "rules": [{ "type": "Text", "globs": ["**/*.css"], "fallthrough": true }],
   "vars": {
+    "TOKEN_AUTH_MODE": "access",
     "TENANT_ID": "fluid",
     "TIDEPOOLS": [
       { "id": "default", "label": "Tidepool", "binding": "TIDEPOOL" }

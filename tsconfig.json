@@ -17,6 +17,7 @@
 		"src/**/*.ts",
 		"test/**/*.ts",
 		"scripts/**/*.mjs",
+		"token-service/src/**/*.ts",
 		"vitest.config.ts"
 	]
 }

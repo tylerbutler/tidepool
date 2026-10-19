@@ -9,9 +9,9 @@ web
 ## Users
 
 Tidepool operators use one admin site to find documents and inspect their
-server-side state across connected deployments. The admin's Cloudflare Access
-application authenticates users for all its connections. When enabled, the token
-service uses that same application.
+server-side state across connected deployments. In the default Access mode,
+one Cloudflare Access application authenticates users for all its connections
+and token issuance. Explicit anonymous mode makes both public for disposable demos.
 
 ## Product Purpose
 
@@ -23,8 +23,9 @@ sequence state, summaries, connections, and logical storage use visible.
 
 The admin site lives at `/admin` on the existing token Worker. It uses
 server-rendered HTML and CSS with small browser scripts, not a frontend
-framework. Access remains the sign-in boundary. No additional user accounts
-or per-document permissions are introduced. Each core Tidepool exports a
+framework. Access is the default sign-in boundary; anonymous mode deliberately
+removes it for all configured connections. No additional user accounts or
+per-document permissions are introduced. Each core Tidepool exports a
 service-binding connector; the admin does not bind directly to its storage.
 
 ## Capabilities and Constraints
@@ -35,6 +36,9 @@ service-binding connector; the admin does not bind directly to its storage.
   the document selection, filter, and cursor.
 - All admitted admin users can inspect all configured Tidepools. Connector
   bindings grant inspection, not token issuance or signing-key access.
+- Anonymous mode makes the directory and metadata for all connections public.
+  Its token issuer grants public access to every document in its signing tenant.
+  Use only disposable resources and public data; requests can incur charges.
 - An admin-only deployment does not require document signing credentials.
 - A persistent directory lists documents registered after this feature is
   enabled. Existing documents enter the directory when accessed.
@@ -49,8 +53,9 @@ service-binding connector; the admin does not bind directly to its storage.
 ## Evidence on Hand
 
 `README.md` describes architecture, limits, authentication, and deployment
-constraints. `src/token-worker.ts` implements verified Cloudflare Access
-authentication. `src/document.ts` and `src/storage.ts` own document state.
+constraints. `src/token-worker.ts` and `token-service/src/worker.ts` implement
+the shared authentication mode and token issuance. `src/document.ts` and
+`src/storage.ts` own document state.
 No existing frontend identity or image assets are present.
 
 ## Product Principles

@@ -1,0 +1,3 @@
+# Paste the exact JWT_SECRET supplied to core Tidepool.
+# Tidepool does not generate or retrieve this key. Keep it out of Git.
+JWT_SECRET=
