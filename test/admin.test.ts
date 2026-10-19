@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
-import { adminResponse } from "../src/admin.js";
 import type { Env } from "../src/common.js";
 import type { ConnectorClient } from "../src/connector.js";
 import { directoryPrefix } from "../src/directory.js";
 import type { DocumentDO } from "../src/document.js";
+import { adminResponse } from "../token-service/src/admin.js";
 import { api, connect, createDocument, startRuntime } from "./runtime.js";
 
 let environment: Awaited<ReturnType<typeof startRuntime>>;

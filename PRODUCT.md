@@ -21,7 +21,8 @@ sequence state, summaries, connections, and logical storage use visible.
 
 ## Operating Context
 
-The admin site lives at `/admin` on the existing token Worker. It uses
+The admin site lives at `/admin` on the token Worker in both deployment
+configurations, including the standalone deploy-button template. It uses
 server-rendered HTML and CSS with small browser scripts, not a frontend
 framework. Access is the default sign-in boundary; anonymous mode deliberately
 removes it for all configured connections. No additional user accounts or
@@ -53,8 +54,8 @@ service-binding connector; the admin does not bind directly to its storage.
 ## Evidence on Hand
 
 `README.md` describes architecture, limits, authentication, and deployment
-constraints. `src/token-worker.ts` and `token-service/src/worker.ts` implement
-the shared authentication mode and token issuance. `src/document.ts` and
+constraints. `token-service/src/worker.ts` and `token-service/src/admin.ts`
+implement authentication, token issuance, and the admin site. `src/document.ts` and
 `src/storage.ts` own document state.
 No existing frontend identity or image assets are present.
 

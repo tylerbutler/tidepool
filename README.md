@@ -86,7 +86,7 @@ and build logs.
 4. Check the build and deploy commands. Use `pnpm build` and
    `pnpm run deploy`. The build helper downloads and verifies a pinned Gleam
    compiler if the Linux x86_64 build environment has none. The build also
-   checks the optional admin and token-only bundles, but the deploy command
+   checks both optional admin/token configurations, but the deploy command
    deploys core only.
 5. Open `https://<your-worker-host>/health` after deployment. A 200 response
    checks configuration; it does not verify collaboration or persistence.
@@ -174,10 +174,10 @@ Run these from the repository root:
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm build` | Gleam JavaScript build and dry-run core, admin/token, and token-only bundles |
+| `pnpm build` | Gleam JavaScript build and dry-run core and both admin/token configurations |
 | `pnpm build:protocol` | Compile protocol; bootstrap pinned Gleam if absent on Linux x86_64 |
 | `pnpm build:admin` | Admin/token Worker dry-run bundle, without Gleam or R2 |
-| `pnpm build:tokens` | Standalone token-only Worker dry-run bundle, without Gleam or storage |
+| `pnpm build:tokens` | Standalone admin/token Worker dry-run bundle, without Gleam or direct storage bindings |
 | `pnpm run deploy` | Deploy core only; requires approval, cloud credentials, and a prior build |
 | `pnpm typecheck` | Strict TypeScript boundary check |
 | `pnpm check` / `pnpm format` | Biome and Gleam formatting |
@@ -338,20 +338,23 @@ a separate deployment test.
 
 ## Token service
 
-There are two deployment targets for the same token issuer. The combined
-admin/token service uses `src/token-worker.ts` and
-`wrangler.admin.jsonc`. The deployed Worker keeps the name `tidepool-auth` to
-preserve its hostname, Access application, and secrets. It uses the existing
-`jose` dependency to mint the HS256 tokens that the document Worker accepts.
-It also serves the read-only [admin site](#admin-site), using service bindings
-to the [core connector](#core-connector) in one or more Tidepool Workers.
+The admin/token service serves `/tokens` and the read-only
+[admin site](#admin-site) at `/admin`. Both deployment configurations use the
+same implementation in `token-service/src/`. The existing deployment uses
+`src/token-worker.ts` and `wrangler.admin.jsonc`, keeping the name `tidepool-auth`
+to preserve its hostname, Access application, and secrets. The service uses
+`jose` to mint HS256 tokens and service bindings to inspect the
+[core connector](#core-connector) in one or more Tidepool Workers.
 
-For a token-only installation, use this second button:
+To deploy both the admin site and token issuer, use this second button:
 
-[![Deploy token service to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool/tree/main/token-service)
+[![Deploy admin and token service to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool/tree/main/token-service)
 
-The self-contained [token-service template](token-service/README.md) does not
-install the admin site or bind to storage. Deploy core first, then supply its
+The self-contained [admin/token template](token-service/README.md) includes the
+admin HTML and stylesheet. It connects to core through `TidepoolConnector`,
+without direct storage bindings. Deploy core first in the same account. Set
+the template's `TIDEPOOL` service target to that Worker's name; it defaults to
+`tidepool`. Then supply core's
 **exact `JWT_SECRET` and `TENANT_ID`** to this issuer. Reuse the signing key,
 not a document JWT. Cloudflare cannot retrieve the existing secret for you;
 you must enter it again. If the form does not prompt for it, add a runtime
@@ -371,7 +374,7 @@ tenant. They can also inspect all connected Tidepools. A connector binding grant
 inspection, not token issuance. There are no per-document permissions.
 
 Set `TOKEN_AUTH_MODE=anonymous` for a disposable public demo without a login.
-This makes `/tokens` and, in the combined Worker, **all admin routes public**.
+This makes `/tokens` and **all admin routes public**.
 Anyone can list document IDs and inspect metadata for every configured
 Tidepool connection. The admin remains read-only, but the token endpoint lets
 anyone create, read, edit, and summarize any document in its signing tenant.
@@ -570,7 +573,7 @@ are not supported.
 
 ## Admin site
 
-Open `/admin` on the combined admin/token service hostname. The admin and
+Open `/admin` on the admin/token service hostname. The admin and
 `/tokens` use the same `TOKEN_AUTH_MODE`. In Access mode, sign in through
 Cloudflare Access; both use the same verified context, audience, and users.
 Forged headers and requests that bypass Access cannot read the directory,

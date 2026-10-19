@@ -257,8 +257,18 @@ beforeAll(async () => {
 				scriptPath: fileURLToPath(
 					new URL("../token-service/dist/worker.js", import.meta.url),
 				),
+				modulesRules: [
+					{ type: "ESModule", include: ["**/*.js"] },
+					{ type: "Text", include: ["**/*.css"] },
+				],
 				compatibilityDate: "2026-07-30",
-				bindings: demo,
+				serviceBindings: {
+					TIDEPOOL: { name: "demo-core", entrypoint: "TidepoolConnector" },
+				},
+				bindings: {
+					...demo,
+					TIDEPOOLS: [{ id: "default", label: "Demo", binding: "TIDEPOOL" }],
+				},
 			},
 		],
 	});
@@ -267,7 +277,7 @@ beforeAll(async () => {
 
 afterAll(async () => runtime?.dispose());
 
-it("accepts tokens from the standalone anonymous mint in real core workerd without exposing admin routes", async () => {
+it("deploys token issuance, the admin, and styles together with a real core connector", async () => {
 	const mint = await runtime.getWorker("demo-mint");
 	const core = await runtime.getWorker("demo-core");
 	const issued = await mint.fetch("https://mint.example/tokens", {
@@ -291,8 +301,21 @@ it("accepts tokens from the standalone anonymous mint in real core workerd witho
 		{ headers: { Authorization: `Bearer ${jwt}` } },
 	);
 	expect(read.status).toBe(200);
-	for (const path of ["/admin", "/admin/style.css"]) {
-		const response = await mint.fetch(`https://mint.example${path}`);
-		expect(response.status).toBe(404);
-	}
+	const admin = await mint.fetch(
+		"https://mint.example/admin?document=public-demo",
+	);
+	expect(admin.status).toBe(200);
+	expect(admin.headers.get("Content-Security-Policy")).toContain(
+		"default-src 'none'",
+	);
+	const markup = await admin.text();
+	expect(markup).toContain("public-demo");
+	expect(markup).toContain("Sequence state");
+	expect(markup).toContain("Public demo.");
+	expect(markup).not.toContain("Protected by Cloudflare Access");
+	expect(markup).not.toContain("/cdn-cgi/access/logout");
+	const styles = await mint.fetch("https://mint.example/admin/style.css");
+	expect(styles.status).toBe(200);
+	expect(styles.headers.get("Content-Type")).toContain("text/css");
+	expect(await styles.text()).toContain("--ink:");
 });

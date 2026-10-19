@@ -1,4 +1,5 @@
 import { SignJWT } from "jose";
+import { type AdminBindings, adminResponse } from "./admin.js";
 import {
 	bytes,
 	errorResponse,
@@ -7,7 +8,7 @@ import {
 	readJson,
 } from "./http.js";
 
-export interface TokenEnv {
+export interface TokenEnv extends AdminBindings {
 	TOKEN_AUTH_MODE?: string;
 	ACCESS_AUDIENCE?: string;
 	TENANT_ID?: string;
@@ -83,14 +84,17 @@ async function route(
 			tokenEndpoint: tokensConfigured ? "/tokens" : null,
 		});
 	}
-	if (url.pathname !== "/tokens") throw new HttpError(404, "Not found");
-	if (request.method !== "POST")
+	const admin = url.pathname === "/admin" || url.pathname.startsWith("/admin/");
+	if (!admin && url.pathname !== "/tokens")
+		throw new HttpError(404, "Not found");
+	if (!admin && request.method !== "POST")
 		throw new HttpError(405, "Use POST to request a token");
 	const userId =
 		mode === "anonymous"
 			? `anonymous:${crypto.randomUUID()}`
 			: await accessUser(env, ctx);
 	if (typeof userId !== "string") return userId;
+	if (admin) return adminResponse(request, env);
 	const signing = signingConfiguration(env);
 	if (
 		request.headers.get("Content-Type")?.split(";")[0]?.trim().toLowerCase() !==

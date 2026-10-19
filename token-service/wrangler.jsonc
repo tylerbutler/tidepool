@@ -5,9 +5,20 @@
 	"compatibility_date": "2026-07-30",
 	"workers_dev": true,
 	"preview_urls": false,
+	"services": [
+		{
+			"binding": "TIDEPOOL",
+			"service": "tidepool",
+			"entrypoint": "TidepoolConnector"
+		}
+	],
+	"rules": [{ "type": "Text", "globs": ["**/*.css"], "fallthrough": true }],
 	"vars": {
 		"TENANT_ID": "fluid",
 		"TOKEN_AUTH_MODE": "access",
+		"TIDEPOOLS": [
+			{ "id": "default", "label": "Tidepool", "binding": "TIDEPOOL" }
+		],
 		"ACCESS_AUDIENCE": ""
 	},
 	"observability": { "enabled": true }

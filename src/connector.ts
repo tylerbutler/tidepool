@@ -1,4 +1,10 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
+import type {
+	ConnectorClient,
+	ConnectorResult,
+	DocumentInfo,
+	DocumentPage,
+} from "../token-service/src/connector.js";
 import { bytes, errorResponse, HttpError, record } from "./common.js";
 import { directoryPrefix } from "./directory.js";
 import type { DocumentDO } from "./document.js";
@@ -9,23 +15,17 @@ interface ConnectorEnv {
 	DOCUMENTS: DurableObjectNamespace<DocumentDO>;
 }
 
-export type DocumentInfo = NonNullable<
-	Awaited<ReturnType<DocumentDO["inspect"]>>
->;
+export type {
+	ConnectorClient,
+	ConnectorResult,
+	DocumentInfo,
+	DocumentPage,
+} from "../token-service/src/connector.js";
 
-export type ConnectorResult<T> =
-	| { ok: true; value: T }
-	| {
-			ok: false;
-			error: { status: number; message: string; retryAfter?: string };
-	  };
-
-export interface DocumentPage {
-	documents: { id: string; indexedAt: string }[];
-	cursor: string | null;
-}
-
-export class TidepoolConnector extends WorkerEntrypoint<ConnectorEnv> {
+export class TidepoolConnector
+	extends WorkerEntrypoint<ConnectorEnv>
+	implements ConnectorClient
+{
 	describe() {
 		return this.#result(async () => ({
 			apiVersion: 1 as const,
@@ -110,8 +110,3 @@ export class TidepoolConnector extends WorkerEntrypoint<ConnectorEnv> {
 		}
 	}
 }
-
-export type ConnectorClient = Pick<
-	TidepoolConnector,
-	"describe" | "listDocuments" | "inspectDocument"
->;

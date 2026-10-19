@@ -1,12 +1,27 @@
-# Tidepool token service
+# Tidepool admin and token service
 
-[![Deploy token service to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool/tree/main/token-service)
+[![Deploy admin and token service to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool/tree/main/token-service)
 
-Deploy this token issuer after you deploy
+Deploy this admin site and token issuer after you deploy
 [core Tidepool](https://github.com/tylerbutler/tidepool#deploy-to-cloudflare).
 This directory is a self-contained Worker template. It needs no Gleam compiler,
-storage resources, service bindings, or files from the parent repository.
-It does not serve the admin site.
+direct storage bindings, or files from the parent repository. The same Worker
+serves `/admin`, its stylesheet, and `/tokens`.
+
+## Connect core Tidepool
+
+The admin uses a same-account service binding to core's `TidepoolConnector`.
+Deploy core first. In `wrangler.jsonc`, set the `TIDEPOOL` binding's `service`
+to your core Worker's name, normally `tidepool`. Keep the `TidepoolConnector`
+entrypoint and the matching `TIDEPOOLS` entry. If the deployment form does not
+let you choose this target, edit the copied repository's config and rebuild.
+The button does not deploy another core Worker.
+
+This service binding grants inspection of core's entire configured tenant,
+not access to its signing key. To inspect more deployments, add their service
+bindings and `TIDEPOOLS` entries as described in
+[Connecting multiple Tidepools](https://github.com/tylerbutler/tidepool#connecting-multiple-tidepools).
+No R2 or Durable Object bindings are needed in this template.
 
 ## Signing key and tenant
 
@@ -35,17 +50,19 @@ missing Access configuration does not enable anonymous issuance.
 | Mode | Required setup |
 | --- | --- |
 | `access` | Protect the hostname with a Cloudflare Access application, set an explicit allowlist, and set `ACCESS_AUDIENCE` to its AUD tag |
-| `anonymous` | Set `TOKEN_AUTH_MODE` explicitly to `anonymous`; `ACCESS_AUDIENCE` is not required |
+| `anonymous` | Set `TOKEN_AUTH_MODE` explicitly to `anonymous` to make both token issuance and the admin public; `ACCESS_AUDIENCE` is not required |
 
 For Access mode, the Worker requires Cloudflare's verified `ctx.access`
 context. Forged Access headers cannot authenticate a caller. All admitted users
-can request tokens for any document in the configured tenant.
+can inspect all configured connections and request tokens for any document in
+the signing tenant.
 
 **Anonymous mode is for disposable public demos. Anyone can obtain tokens to
-create, read, edit, and summarize any document in the configured tenant.**
+create, read, edit, and summarize any document in the signing tenant. The admin
+also exposes document IDs and metadata for every configured connection.**
 There is no per-document allowlist or tenant-wide rate or cost guard.
 Requests can incur Cloudflare charges. Do not use private documents or
-credentials shared with a retained-data deployment.
+credentials shared with a retained-data deployment, or connect private Tidepools.
 
 An existing Access application can still block requests before they reach this
 Worker. For an anonymous demo, use an unprotected hostname or remove the
@@ -57,7 +74,8 @@ Anonymous user IDs are generated for each issuance; they are not stable accounts
 
 The button copies only this directory into a new repository. Use Node.js 24,
 pnpm 10, build command `pnpm build`, and deploy command `pnpm run deploy`.
-Set the tenant, authentication mode, audience when required, and signing key.
+Set the core service target, tenant, authentication mode, audience when required,
+and signing key.
 The button does not deploy core Tidepool or create an Access application.
 Cloudflare account setup and usage can incur charges.
 
@@ -77,8 +95,10 @@ default is Access mode, not anonymous mode. For local tests, copy
 `.dev.vars.example` to `.dev.vars` and set your test key there.
 
 Check `/health` after setup. A 200 response with `"tokenEndpoint": "/tokens"`
-checks configuration, not Access login or compatibility with your core Worker.
-After signing in when Access mode is enabled, request:
+checks signing configuration, not Access login or connector connectivity.
+After signing in when Access mode is enabled, open `/admin` and select a
+document to check inspection. The admin is read-only and does not edit or
+delete documents. To request a token:
 
 ```http
 POST /tokens

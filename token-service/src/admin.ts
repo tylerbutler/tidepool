@@ -1,10 +1,10 @@
 import styles from "./admin.css";
-import { bytes, errorResponse, HttpError } from "./common.js";
 import type {
 	ConnectorClient,
 	ConnectorResult,
 	DocumentInfo,
 } from "./connector.js";
+import { bytes, errorResponse, HttpError } from "./http.js";
 
 export interface AdminBindings {
 	TIDEPOOLS?: TidepoolConnection[];
@@ -182,6 +182,7 @@ function shell(
 	content: string,
 	connections: TidepoolConnection[],
 	selected: TidepoolConnection | undefined,
+	anonymous: boolean,
 ): string {
 	const home = selected ? link({ tidepool: selected.id }) : "/admin";
 	return `<!doctype html>
@@ -191,7 +192,7 @@ function shell(
 	<header class="site-header"><div class="header-inner">
 		<a class="brand" href="${home}" aria-label="Tidepool admin home"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M3 8c4-5 7 5 11 0s7 0 9 0M3 14c4-5 7 5 11 0s7 0 9 0M3 20c4-5 7 5 11 0s7 0 9 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>Tidepool</a>
 		<nav aria-label="Main"><a href="${home}" aria-current="page">Documents</a></nav>
-		<a class="sign-out" href="/cdn-cgi/access/logout">Sign out</a>
+		${anonymous ? "" : '<a class="sign-out" href="/cdn-cgi/access/logout">Sign out</a>'}
 	</div></header>
 	<main id="main">
 		<div class="page-heading"><div><h1>Documents</h1><p>${selected ? `Inspect ${html(selected.label)}${tenant ? `, tenant <code>${html(tenant)}</code>` : ""}.` : "Inspect a connected Tidepool."}</p></div><span class="read-only">Read-only</span></div>
@@ -199,7 +200,7 @@ function shell(
 		<aside class="coverage" aria-label="Directory coverage"><strong>About this directory</strong><p>New documents appear here automatically. Older documents appear when accessed. <a href="#lookup">Open by ID</a> to find one that is not listed.</p></aside>
 		${content}
 	</main>
-	<footer class="site-footer">Protected by Cloudflare Access. All users admitted to this admin site can inspect its connected Tidepools.</footer>
+	<footer class="site-footer">${anonymous ? "Public demo. Anyone can inspect its connected Tidepools." : "Protected by Cloudflare Access. All users admitted to this admin site can inspect its connected Tidepools."}</footer>
 </body></html>`;
 }
 
@@ -313,7 +314,13 @@ export async function adminResponse(
 	return new Response(
 		request.method === "HEAD"
 			? null
-			: shell(tenant, content, connections, connection),
+			: shell(
+					tenant,
+					content,
+					connections,
+					connection,
+					env.TOKEN_AUTH_MODE === "anonymous",
+				),
 		{
 			status,
 			headers: {

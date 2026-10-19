@@ -2,7 +2,7 @@
 	"name": "@tylerbu/tidepool-token-service",
 	"version": "0.0.0",
 	"private": true,
-	"description": "A Tidepool token mint with Access authentication or opt-in public demo mode",
+	"description": "A Tidepool admin site and token mint with Access or opt-in public demo mode",
 	"license": "MIT",
 	"type": "module",
 	"packageManager": "pnpm@10.24.0",
@@ -15,7 +15,10 @@
 				"description": "Use the same tenant as core Tidepool, normally `fluid`."
 			},
 			"TOKEN_AUTH_MODE": {
-				"description": "Defaults to `access`. For a throwaway public demo, choose `anonymous`: anyone can obtain create/read/write/summary tokens for any document in this tenant and incur Cloudflare charges."
+				"description": "Defaults to `access`. For a throwaway public demo, choose `anonymous`: anyone can inspect all connected Tidepools and obtain create/read/write/summary tokens for any document in the signing tenant. Public requests can incur Cloudflare charges."
+			},
+			"TIDEPOOL": {
+				"description": "Admin connector to your already-deployed core Worker in this account. Set the target service to its Worker name, normally `tidepool`, and keep entrypoint `TidepoolConnector`. This grants inspection of that core's tenant, not signing-key access."
 			},
 			"ACCESS_AUDIENCE": {
 				"description": "Required in `access` mode: the AUD tag from your Cloudflare Access application. Leave empty only when explicitly using `anonymous` mode."
