@@ -9,8 +9,14 @@
 		"noUnusedParameters": true,
 		"skipLibCheck": true,
 		"types": ["@cloudflare/workers-types", "node"],
-		"allowJs": false,
+		"allowJs": true,
+		"checkJs": true,
 		"noEmit": true
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+	"include": [
+		"src/**/*.ts",
+		"test/**/*.ts",
+		"scripts/**/*.mjs",
+		"vitest.config.ts"
+	]
 }

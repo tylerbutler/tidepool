@@ -14,6 +14,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  deploy-button:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7
+        with:
+          node-version: "24"
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Build without a preinstalled Gleam compiler
+        run: |
+          if command -v gleam >/dev/null 2>&1; then
+            echo "This job must exercise the missing-compiler bootstrap"
+            exit 1
+          fi
+          test ! -e protocol/build
+          pnpm build
+      - name: Check the core-only deployment bundle
+        run: |
+          pnpm run deploy --dry-run --outdir dist/button
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import { readFileSync } from "node:fs";
+          const source = readFileSync("dist/button/worker.js", "utf8");
+          const exports = source.match(/export\s*\{[^}]*\}/g)?.join("\n") ?? "";
+          for (const name of ["DocumentDO", "TidepoolConnector", "default"]) {
+            assert.match(exports, new RegExp(`\\b${name}\\b`));
+          }
+          NODE
   prototype:
     runs-on: ubuntu-latest
     timeout-minutes: 15

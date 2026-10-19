@@ -60,6 +60,61 @@ replays proposals and minimum-sequence advances from that checkpoint through
 the summary reference. The snapshot includes pending proposals and agreed
 quorum settings at that reference; later approvals remain in the delta tail.
 
+## Deploy to Cloudflare
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/tylerbutler/tidepool)
+
+Use this guided setup to deploy core Tidepool in your Cloudflare account.
+Cloudflare copies this public repository to your Git account, then provisions
+the Worker's R2 bucket and SQLite-backed Durable Objects. The button does not
+install the admin/token Worker or configure Cloudflare Access.
+
+**You must supply `JWT_SECRET`.** Generate your own signing key and enter it
+in Cloudflare's deployment form. Tidepool does not generate this key. Use at
+least 32 UTF-8 bytes, keep a secure backup, and give the same key to the trusted
+backend that issues your document JWTs. Keep it out of browser code, Git, URLs,
+and build logs.
+
+1. Open the button and sign in to Cloudflare and your Git provider.
+   You may need to enable R2 and complete account billing setup. Cloudflare
+   usage can incur charges.
+2. Choose repository, Worker, and storage names. Use unused resource names
+   when creating a separate installation.
+3. Generate a key outside Tidepool with `openssl rand -hex 32`, then enter it
+   as `JWT_SECRET` in the setup form. The committed `.dev.vars.example`
+   declares this input with an empty value; it contains no usable key.
+4. Check the build and deploy commands. Use `pnpm build` and
+   `pnpm run deploy`. The build helper downloads and verifies a pinned Gleam
+   compiler if the Linux x86_64 build environment has none. The build also
+   checks the optional admin bundle, but the deploy command deploys core only.
+5. Open `https://<your-worker-host>/health` after deployment. A 200 response
+   checks configuration; it does not verify collaboration or persistence.
+
+**If the setup form does not ask for `JWT_SECRET`, set it yourself before
+using Tidepool.** In the deployed Worker's dashboard, use **Settings >
+Variables and Secrets** to add an encrypted runtime secret named `JWT_SECRET`.
+From the cloned repository, you can instead run:
+
+```sh
+pnpm exec wrangler secret put JWT_SECRET --config wrangler.jsonc
+```
+
+A build-only environment variable does not configure this runtime secret.
+Leave the example value empty in Git. If you deploy through the CLI rather
+than the button, run `pnpm build` before `pnpm run deploy` and follow the
+[manual deployment instructions](#cloud-deployment-only-after-approval).
+
+Use tenant `fluid` unless you changed `TENANT_ID` during setup. For browser
+clients on another origin, set `ALLOWED_ORIGIN` to the application origin as
+described in [Local setup](#local-setup). Core Tidepool has no JWT issuer:
+use trusted application code or install the separate
+[token service](#token-service). The optional [admin site](#admin-site) also
+requires its own deployment and Access application.
+
+The button flow and its blank-secret prompt remain unverified in the live
+Cloudflare dashboard. See Cloudflare's [deploy-button documentation](https://developers.cloudflare.com/workers/platform/deploy-buttons/)
+for account setup and supported resource provisioning.
+
 ## Local setup
 
 Install Node.js 24, pnpm, and Gleam 1.19.2 or later. Erlang/OTP is necessary
@@ -118,7 +173,9 @@ Run these from the repository root:
 | Command | Purpose |
 | --- | --- |
 | `pnpm build` | Gleam JavaScript build and dry-run bundles for both Workers |
+| `pnpm build:protocol` | Compile protocol; bootstrap pinned Gleam if absent on Linux x86_64 |
 | `pnpm build:admin` | Admin/token Worker dry-run bundle, without Gleam or R2 |
+| `pnpm run deploy` | Deploy core only; requires approval, cloud credentials, and a prior build |
 | `pnpm typecheck` | Strict TypeScript boundary check |
 | `pnpm check` / `pnpm format` | Biome and Gleam formatting |
 | `pnpm test:protocol` | Assert protocol behavior on JavaScript |
@@ -129,7 +186,9 @@ Run these from the repository root:
 
 `cd protocol && gleam run --target erlang` runs the same protocol assertion
 harness on Erlang. The CI workflow installs this package and runs the local
-checks without cloud credentials. It does not deploy the Worker.
+checks without cloud credentials. A separate Linux job builds from a fresh
+checkout without Gleam, checks the downloaded-compiler path, and dry-run bundles
+the core deploy command. Neither job deploys the Worker.
 
 ## Limits and failure behavior
 
