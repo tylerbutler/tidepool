@@ -8,9 +8,10 @@ web
 
 ## Users
 
-Tidepool operators use the admin site to find documents and inspect their
-server-side state. The same Cloudflare Access application and users protect
-the token service and the admin site.
+Tidepool operators use one admin site to find documents and inspect their
+server-side state across connected deployments. The admin's Cloudflare Access
+application authenticates users for all its connections. When enabled, the token
+service uses that same application.
 
 ## Product Purpose
 
@@ -23,11 +24,18 @@ sequence state, summaries, connections, and logical storage use visible.
 The admin site lives at `/admin` on the existing token Worker. It uses
 server-rendered HTML and CSS with small browser scripts, not a frontend
 framework. Access remains the sign-in boundary. No additional user accounts
-or per-document permissions are introduced.
+or per-document permissions are introduced. Each core Tidepool exports a
+service-binding connector; the admin does not bind directly to its storage.
 
 ## Capabilities and Constraints
 
 - The admin site is read-only. It does not edit or delete documents.
+- A native selector switches between statically configured, same-account
+  Tidepools. Links and forms retain the selected deployment; switching clears
+  the document selection, filter, and cursor.
+- All admitted admin users can inspect all configured Tidepools. Connector
+  bindings grant inspection, not token issuance or signing-key access.
+- An admin-only deployment does not require document signing credentials.
 - A persistent directory lists documents registered after this feature is
   enabled. Existing documents enter the directory when accessed.
 - An explicit document-ID lookup checks for an older document and registers

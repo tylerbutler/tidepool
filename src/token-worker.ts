@@ -1,10 +1,22 @@
 import { SignJWT } from "jose";
 import { type AdminBindings, adminResponse } from "./admin.js";
-import { type AuthEnv, configuration, originAllowed } from "./auth.js";
+import { type AuthEnv, originAllowed } from "./auth.js";
 import { bytes, errorResponse, HttpError, readJson, record } from "./common.js";
 
-export interface TokenEnv extends AuthEnv, AdminBindings {
+export interface TokenEnv extends AdminBindings {
 	ACCESS_AUDIENCE: string;
+	TENANT_ID?: string;
+	JWT_SECRET?: string;
+	ALLOWED_ORIGIN?: string;
+}
+
+function signingConfiguration(env: TokenEnv): AuthEnv {
+	const { TENANT_ID, JWT_SECRET, ALLOWED_ORIGIN } = env;
+	if (!TENANT_ID || !JWT_SECRET)
+		throw new HttpError(503, "TENANT_ID and JWT_SECRET must be configured");
+	if (bytes(JWT_SECRET) < 32)
+		throw new HttpError(503, "JWT_SECRET must contain at least 32 bytes");
+	return { TENANT_ID, JWT_SECRET, ALLOWED_ORIGIN };
 }
 
 export default {
@@ -28,16 +40,18 @@ export default {
 					},
 				});
 			} else {
-				configuration(env);
 				if (!env.ACCESS_AUDIENCE)
 					throw new HttpError(503, "ACCESS_AUDIENCE must be configured");
-				if (bytes(env.JWT_SECRET) < 32)
-					throw new HttpError(503, "JWT_SECRET must contain at least 32 bytes");
 				if (
 					(url.pathname === "/" || url.pathname === "/health") &&
 					request.method === "GET"
 				) {
-					response = Response.json({ status: "ok", tokenEndpoint: "/tokens" });
+					const tokensConfigured = Boolean(env.TENANT_ID || env.JWT_SECRET);
+					if (tokensConfigured) signingConfiguration(env);
+					response = Response.json({
+						status: "ok",
+						tokenEndpoint: tokensConfigured ? "/tokens" : null,
+					});
 				} else {
 					const admin =
 						url.pathname === "/admin" || url.pathname.startsWith("/admin/");
@@ -59,6 +73,7 @@ export default {
 					if (admin) {
 						response = await adminResponse(request, env);
 					} else {
+						const signing = signingConfiguration(env);
 						if (
 							request.headers
 								.get("Content-Type")
@@ -80,7 +95,7 @@ export default {
 						const issuedAt = Math.floor(Date.now() / 1000);
 						const expiresAt = issuedAt + 15 * 60;
 						const jwt = await new SignJWT({
-							tenantId: env.TENANT_ID,
+							tenantId: signing.TENANT_ID,
 							documentId: body.documentId,
 							user: { id: identity.user_uuid },
 							scopes: ["doc:read", "doc:write", "summary:write"],
@@ -90,7 +105,7 @@ export default {
 							.setIssuedAt(issuedAt)
 							.setExpirationTime(expiresAt)
 							.setJti(crypto.randomUUID())
-							.sign(new TextEncoder().encode(env.JWT_SECRET));
+							.sign(new TextEncoder().encode(signing.JWT_SECRET));
 						response = Response.json({ jwt, expiresAt });
 					}
 				}

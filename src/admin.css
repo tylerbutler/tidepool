@@ -44,10 +44,12 @@ a:hover {
 	outline-offset: 4px;
 }
 button,
-input {
+input,
+select {
 	font: inherit;
 }
-input {
+input,
+select {
 	caret-color: var(--accent);
 }
 label span {
@@ -137,6 +139,19 @@ main {
 .page-heading p {
 	margin-top: 8px;
 	color: var(--muted);
+}
+.connection-picker {
+	max-width: 30rem;
+	margin-bottom: 24px;
+}
+.connection-picker select {
+	min-width: 0;
+	width: 100%;
+	padding: 10px 12px;
+	border: 1px solid #91ada0;
+	border-radius: 4px;
+	background: var(--surface);
+	color: var(--ink);
 }
 .read-only {
 	padding: 5px 12px;

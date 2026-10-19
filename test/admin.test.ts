@@ -1,14 +1,22 @@
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
-import { type AdminBindings, adminResponse } from "../src/admin.js";
+import { adminResponse } from "../src/admin.js";
+import type { Env } from "../src/common.js";
+import type { ConnectorClient } from "../src/connector.js";
 import { directoryPrefix } from "../src/directory.js";
+import type { DocumentDO } from "../src/document.js";
 import { api, connect, createDocument, startRuntime } from "./runtime.js";
 
 let environment: Awaited<ReturnType<typeof startRuntime>>;
-let bindings: Required<AdminBindings>;
+let bindings: Omit<Env, "DOCUMENTS"> & {
+	DOCUMENTS: DurableObjectNamespace<DocumentDO>;
+	TIDEPOOL: ConnectorClient;
+};
+
+const connections = [{ id: "default", label: "Tidepool", binding: "TIDEPOOL" }];
 
 beforeAll(async () => {
-	environment = await startRuntime();
-	bindings = await environment.runtime.getBindings<Required<AdminBindings>>();
+	environment = await startRuntime(undefined, true);
+	bindings = await environment.runtime.getBindings<typeof bindings>();
 });
 
 afterAll(async () => environment?.runtime.dispose());
@@ -16,7 +24,7 @@ afterAll(async () => environment?.runtime.dispose());
 function admin(query = "") {
 	return adminResponse(new Request(`https://issuer.example/admin${query}`), {
 		...bindings,
-		TENANT_ID: "fluid",
+		TIDEPOOLS: connections,
 	});
 }
 
@@ -64,6 +72,7 @@ it("indexes persisted documents, bounds listing, filters prefixes, and escapes i
 		next?.replaceAll("&amp;", "&") ?? "",
 		"https://issuer.example",
 	);
+	expect(nextUrl.searchParams.get("tidepool")).toBe("default");
 	const lastPage = await (await admin(nextUrl.search)).text();
 	expect(lastPage.match(/class="row-link"/g)).toHaveLength(1);
 	expect(lastPage).not.toContain(">Next page</a>");
@@ -192,7 +201,7 @@ it("rejects oversized queries and mutations, and reports directory outages inste
 	await expect(
 		adminResponse(
 			new Request("https://issuer.example/admin", { method: "POST" }),
-			{ ...bindings, TENANT_ID: "fluid" },
+			{ ...bindings, TIDEPOOLS: connections },
 		),
 	).rejects.toMatchObject({ status: 405 });
 	const spy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -200,17 +209,16 @@ it("rejects oversized queries and mutations, and reports directory outages inste
 		const failed = await adminResponse(
 			new Request("https://issuer.example/admin"),
 			{
-				TENANT_ID: "fluid",
-				DOCUMENTS: bindings.DOCUMENTS,
-				CONTENT: new Proxy(bindings.CONTENT, {
-					get(target, key) {
-						if (key === "list")
-							return async () => {
-								throw new Error("R2 unavailable");
-							};
-						return Reflect.get(target, key);
+				TIDEPOOLS: connections,
+				TIDEPOOL: {
+					...bindings.TIDEPOOL,
+					describe: () => bindings.TIDEPOOL.describe(),
+					inspectDocument: (id: string) =>
+						bindings.TIDEPOOL.inspectDocument(id),
+					listDocuments: async () => {
+						throw new Error("Connector unavailable");
 					},
-				}),
+				},
 			},
 		);
 		expect(failed.status).toBe(503);
@@ -220,4 +228,52 @@ it("rejects oversized queries and mutations, and reports directory outages inste
 	} finally {
 		spy.mockRestore();
 	}
+});
+
+it("reports invalid connection configuration without querying a Tidepool", async () => {
+	const connector = {
+		describe: vi.fn(),
+		listDocuments: vi.fn(),
+		inspectDocument: vi.fn(),
+	};
+	for (const configured of [
+		undefined,
+		[],
+		[...connections, ...connections],
+		[{ id: "not a URL ID", label: "Invalid", binding: "TIDEPOOL" }],
+	]) {
+		const response = await adminResponse(
+			new Request("https://issuer.example/admin"),
+			{ TIDEPOOLS: configured, TIDEPOOL: connector },
+		);
+		expect(response.status).toBe(503);
+		expect(response.headers.has("Retry-After")).toBe(false);
+	}
+	expect(connector.describe).not.toHaveBeenCalled();
+});
+
+it("reports missing bindings and incompatible connector versions while retaining the connection picker", async () => {
+	const input = new Request("https://issuer.example/admin?tidepool=default");
+	const missing = await adminResponse(input, { TIDEPOOLS: connections });
+	expect(missing.status).toBe(503);
+	expect(await missing.text()).toContain(
+		"Service binding &quot;TIDEPOOL&quot;",
+	);
+	const list = vi.fn();
+	const incompatible = await adminResponse(input, {
+		TIDEPOOLS: connections,
+		TIDEPOOL: {
+			describe: async () => ({
+				ok: true,
+				value: { apiVersion: 2, tenantId: "fluid" },
+			}),
+			listDocuments: list,
+			inspectDocument: vi.fn(),
+		},
+	});
+	expect(incompatible.status).toBe(503);
+	const markup = await incompatible.text();
+	expect(markup).toContain("unsupported connector API version");
+	expect(markup).toContain('<select id="tidepool"');
+	expect(list).not.toHaveBeenCalled();
 });

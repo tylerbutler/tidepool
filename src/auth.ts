@@ -16,7 +16,10 @@ export function configuration(env: AuthEnv): void {
 	}
 }
 
-export function originAllowed(request: Request, env: AuthEnv): void {
+export function originAllowed(
+	request: Request,
+	env: Pick<AuthEnv, "ALLOWED_ORIGIN">,
+): void {
 	const origin = request.headers.get("Origin");
 	if (
 		origin &&

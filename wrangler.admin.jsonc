@@ -5,17 +5,15 @@
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "preview_urls": false,
-  "durable_objects": {
-    "bindings": [
-      { "name": "DOCUMENTS", "class_name": "DocumentDO", "script_name": "tidepool" }
-    ]
-  },
-  "r2_buckets": [
-    { "binding": "CONTENT", "bucket_name": "tidepool-content" }
+  "services": [
+    { "binding": "TIDEPOOL", "service": "tidepool", "entrypoint": "TidepoolConnector" }
   ],
   "rules": [{ "type": "Text", "globs": ["**/*.css"], "fallthrough": true }],
   "vars": {
     "TENANT_ID": "fluid",
+    "TIDEPOOLS": [
+      { "id": "default", "label": "Tidepool", "binding": "TIDEPOOL" }
+    ],
     "ACCESS_AUDIENCE": "bc39b6ce34fcef6eeed9978789b30b93352a33af2caf96177744f2bd2cd8e26d"
   },
   "observability": { "enabled": true }

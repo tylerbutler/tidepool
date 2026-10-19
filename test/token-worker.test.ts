@@ -1,13 +1,14 @@
 import { expect, it, vi } from "vitest";
 import { verify } from "../src/auth.js";
 import { integer, record, text } from "../src/common.js";
+import type { ConnectorClient } from "../src/connector.js";
 import tokenWorker, { type TokenEnv } from "../src/token-worker.js";
 
-const env: TokenEnv = {
+const env = {
 	TENANT_ID: "fluid",
 	JWT_SECRET: "tidepool-token-test-signing-secret-32-bytes",
 	ACCESS_AUDIENCE: "token-application",
-};
+} satisfies TokenEnv;
 
 function access(
 	identity: CloudflareAccessIdentity | undefined = { user_uuid: "native-user" },
@@ -240,4 +241,53 @@ it.each([
 	const response = await tokenWorker.fetch(input, env, verified);
 	expect(response.status).not.toBe(403);
 	expect(verified.access.getIdentity).toHaveBeenCalledOnce();
+});
+
+it("authenticates admin-only deployments without signing credentials before calling any connector", async () => {
+	const connector: ConnectorClient = {
+		describe: vi.fn<ConnectorClient["describe"]>(async () => ({
+			ok: true,
+			value: { apiVersion: 1, tenantId: "remote-tenant" },
+		})),
+		listDocuments: vi.fn<ConnectorClient["listDocuments"]>(async () => ({
+			ok: true,
+			value: { documents: [], cursor: null },
+		})),
+		inspectDocument: vi.fn(),
+	};
+	const adminEnv: TokenEnv = {
+		ACCESS_AUDIENCE: env.ACCESS_AUDIENCE,
+		TIDEPOOLS: [{ id: "remote", label: "Remote", binding: "REMOTE" }],
+		REMOTE: connector,
+	};
+	const input = new Request("https://issuer.example/admin");
+	for (const ctx of [
+		{},
+		access({}, env.ACCESS_AUDIENCE),
+		access(undefined, "wrong"),
+	]) {
+		expect((await tokenWorker.fetch(input, adminEnv, ctx)).status).toBe(403);
+	}
+	expect(connector.describe).not.toHaveBeenCalled();
+	expect(connector.listDocuments).not.toHaveBeenCalled();
+	const admitted = await tokenWorker.fetch(input, adminEnv, access());
+	expect(admitted.status).toBe(200);
+	expect(await admitted.text()).toContain("remote-tenant");
+	expect(connector.describe).toHaveBeenCalledOnce();
+	expect(connector.listDocuments).toHaveBeenCalledOnce();
+	const health = await tokenWorker.fetch(
+		new Request("https://issuer.example/health"),
+		adminEnv,
+		{},
+	);
+	expect(await health.json()).toEqual({ status: "ok", tokenEndpoint: null });
+	expect(
+		(
+			await tokenWorker.fetch(
+				request({ documentId: "doc" }),
+				adminEnv,
+				access(),
+			)
+		).status,
+	).toBe(503);
 });

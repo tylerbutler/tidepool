@@ -10,6 +10,7 @@ import {
 	text,
 } from "./common.js";
 
+export { TidepoolConnector } from "./connector.js";
 export { DocumentDO } from "./document.js";
 
 export default {

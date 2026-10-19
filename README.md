@@ -280,28 +280,35 @@ The separate HTTP-only admin/token service uses `src/token-worker.ts` and
 `wrangler.admin.jsonc`. The deployed Worker keeps the name `tidepool-auth` to
 preserve its hostname, Access application, and secrets. It uses the existing
 `jose` dependency to mint the HS256 tokens that the document Worker accepts.
-It also serves the read-only
-[admin site](#admin-site), using bindings to the document Worker's existing
-Durable Object namespace and R2 bucket.
+It also serves the read-only [admin site](#admin-site), using service bindings
+to the [core connector](#core-connector) in one or more Tidepool Workers.
 
 Protect the token service hostname with a self-hosted
 [Cloudflare Access application](https://developers.cloudflare.com/workers/configuration/cloudflare-access/).
 Configure an explicit email allowlist and the desired login provider, such as
 [email one-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/).
-All users admitted by this Access application can create, read, edit, and
-summarize any document in the configured tenant. There are no per-document
-permissions.
+When token signing is configured, all users admitted by this Access application
+can create, read, edit, and summarize any document in its configured token
+tenant. They can also inspect all connected Tidepools. A connector binding grants
+inspection, not token issuance. There are no per-document permissions.
 
 Set these bindings before using the service:
 
 | Binding | Purpose |
 | --- | --- |
-| `TENANT_ID` | The same tenant as the document Worker |
-| `JWT_SECRET` | A secret of at least 32 UTF-8 bytes, shared with the document Worker |
+| `TENANT_ID` | Token issuance only: the same tenant as its document Worker |
+| `JWT_SECRET` | Token issuance only: a secret of at least 32 UTF-8 bytes, shared with its document Worker |
 | `ACCESS_AUDIENCE` | The Access application's AUD tag, set in `wrangler.admin.jsonc` variables |
 | `ALLOWED_ORIGIN` | Optional browser app origin; defaults to the token service origin |
-| `DOCUMENTS` | Admin only: the document Worker's `DocumentDO` namespace |
-| `CONTENT` | Admin only: the same R2 bucket as the document Worker |
+| `TIDEPOOLS` | Admin only: an array of connection IDs, labels, and service binding names |
+| Named service bindings | Admin only: each targets a core Worker's `TidepoolConnector` entrypoint |
+
+An admin-only deployment can omit both `TENANT_ID` and `JWT_SECRET`. Its admin
+routes still require verified Access identity, `/tokens` returns 503, and
+`/health` reports `"tokenEndpoint": null`. If either signing setting is present,
+the health check requires both settings to be valid. Connecting more Tidepools
+does not extend `/tokens`: that endpoint still signs for one configured tenant
+and key.
 
 The Worker requires Cloudflare's verified `ctx.access` context and a matching
 audience. It derives `user.id` from the Access user's stable `user_uuid`. Forged
@@ -362,20 +369,22 @@ tokens when they reconnect.
 ### Deploying the admin/token Worker
 
 Deployment requires approval and the intended Cloudflare account. It does not
-create an R2 bucket or deploy the document Worker. Deploy the document Worker
-first when using the admin site; the admin config refers to its existing
-`DocumentDO` namespace by `script_name: "tidepool"`.
+create an R2 bucket or deploy the document Worker. Deploy each connected
+document Worker first when using the admin site; the admin config refers to its
+named `TidepoolConnector` entrypoint. An older Worker without that export must
+be upgraded before the admin binding can use it.
 
 1. Create the Access application, its allowlist, and login provider in Cloudflare
    Zero Trust. Set `ACCESS_AUDIENCE` to the application's AUD tag.
-2. Set `JWT_SECRET` with
+2. For token issuance, set `JWT_SECRET` with
    `pnpm exec wrangler secret put JWT_SECRET --config wrangler.admin.jsonc`.
    Use the same secret when deploying the document Worker. Keep a secure backup;
    Cloudflare does not return stored Worker secrets.
 3. Run `pnpm build:admin`, then
    `pnpm exec wrangler deploy --config wrangler.admin.jsonc`.
-4. Sign in at the deployed hostname, check `/health`, and request a token.
-   A direct request without verified Access context must not return a JWT.
+4. Sign in at the deployed hostname, check `/health`, and open `/admin`.
+   If token issuance is configured, request a token. A direct request without
+   verified Access context must not return a JWT or document inspection data.
 
 Wrangler's normal OAuth login can deploy Workers but may lack Access write
 permissions. API provisioning needs `Access: Apps and Policies Write` and, for
@@ -384,6 +393,76 @@ If Access setup is unavailable, the Worker can deploy with minting disabled
 until its audience is configured. Local JWT tests do not verify a live Access
 login.
 
+## Core connector
+
+Every core Tidepool Worker exports the `TidepoolConnector` RPC entrypoint from
+`src/connector.ts`. It uses that Worker's tenant, Durable Objects, and R2 bucket.
+It does not depend on the admin site, Cloudflare Access, or the token Worker.
+The public document HTTP handler exposes no connector routes.
+
+| RPC method | Result on success |
+| --- | --- |
+| `describe()` | `{ apiVersion: 1, tenantId }` |
+| `listDocuments({ prefix?, cursor? })` | `{ documents: [{ id, indexedAt }], cursor }` |
+| `inspectDocument(documentId)` | The selected document's metadata |
+
+Each method returns `{ ok: true, value }` or
+`{ ok: false, error: { status, message, retryAfter? } }`. `retryAfter`, when
+present, is a delay in seconds. The admin preserves the status and retry hint.
+Unexpected storage/runtime errors are logged at the source and return a generic
+503 error, not an empty directory. A missing document returns 404.
+
+Listing returns at most 50 indexed documents; a null cursor marks the final
+page. Prefixes and document IDs are limited to 256 UTF-8 bytes, and cursors to
+2048 bytes. The connector derives the tenant from its own configuration.
+Listing does not inspect or wake every document. Inspection does not append
+operations, but can register an existing document in the directory.
+
+**Trust boundary:** a service binding to this entrypoint grants inspection of
+the entire configured tenant. Only give it to trusted caller Workers. The
+connector does not receive a browser Access session or enforce user permissions;
+the caller must authenticate users before calling it. The admin verifies its
+Access identity before every admin request. All admitted admin users can inspect
+all configured connections, without a second login. No document signing key is
+shared through the connector.
+
+### Connecting multiple Tidepools
+
+Connections use same-account Cloudflare service bindings. Configure the admin
+Worker with one binding per core deployment and a matching `TIDEPOOLS` entry:
+
+```jsonc
+{
+  "services": [
+    {
+      "binding": "POOL_STAGING",
+      "service": "tidepool-staging",
+      "entrypoint": "TidepoolConnector"
+    },
+    {
+      "binding": "POOL_PRODUCTION",
+      "service": "tidepool-production",
+      "entrypoint": "TidepoolConnector"
+    }
+  ],
+  "vars": {
+    "ACCESS_AUDIENCE": "<admin Access application's AUD tag>",
+    "TIDEPOOLS": [
+      { "id": "staging", "label": "Staging", "binding": "POOL_STAGING" },
+      { "id": "production", "label": "Production", "binding": "POOL_PRODUCTION" }
+    ]
+  }
+}
+```
+
+Connection IDs must be unique, contain 1 to 64 lowercase ASCII letters, digits,
+hyphens, or underscores, and start with a letter or digit. Keep these IDs stable:
+admin links use them to distinguish deployments, even when tenant and document
+IDs match. Adding or removing a connection requires an admin configuration
+change and redeployment. The admin no longer needs direct `DOCUMENTS` or
+`CONTENT` bindings. Cross-account HTTPS connectors and dynamic registration
+are not supported.
+
 ## Admin site
 
 Open `/admin` on the token service hostname after signing in through
@@ -391,6 +470,13 @@ Cloudflare Access. The admin site uses the same verified Access context,
 audience, and users as `/tokens`. Forged headers and direct requests that
 bypass Access cannot read the directory, metadata, or stylesheet. The site
 does not introduce another login, permission tier, or browser JWT.
+
+Choose a Tidepool and select **Connect** to browse that deployment. The first
+configured connection is the default when no connection ID is supplied; an
+unknown ID returns an explicit error. Switching connections clears the document
+selection, filter, and page cursor. Document links, exact-ID lookup, refresh,
+filters, and pagination keep the selected connection. An unavailable Tidepool
+does not prevent switching to another one. There is no combined inventory.
 
 The document directory shows up to 50 entries per page. Filter by a
 case-sensitive document-ID prefix, follow the next-page link, or open an exact
@@ -465,10 +551,13 @@ uses the `tidepool-content` R2 bucket and SQLite-backed `DocumentDO` objects.
 Access protects only the token Worker; document requests and WebSocket
 admission require document JWTs.
 
-The admin site and its document-inspection dependency are deployed. Anonymous
-requests to `/admin`, its stylesheet, and `/tokens` redirect to the existing
-Access sign-in. Signed-in document browsing remains unverified on the live
-service; no Access users or policies were changed for this deployment.
+The core connector and service-binding admin were deployed on 2026-10-19,
+with the core deployed first. The admin has one configured connection to
+`tidepool`. Core `/health` returns 200, and the public `/connector` path returns
+404. Anonymous requests to `/admin`, its stylesheet, `/tokens`, and the admin
+`/health` redirect to the existing Access sign-in. Signed-in document browsing
+remains unverified on the live service; no Access users or policies were changed
+for this deployment.
 
 The initial cloud deployment passed a bounded official-client SharedMap
 collaboration and fresh-client reload check, plus an R2 blob upload/read.

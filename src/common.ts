@@ -18,6 +18,7 @@ export class HttpError extends Error {
 	constructor(
 		public readonly status: number,
 		message: string,
+		public readonly retryAfter?: string,
 	) {
 		super(message);
 	}
@@ -93,7 +94,15 @@ export async function readJson(
 
 export function errorResponse(error: unknown): Response {
 	if (error instanceof HttpError) {
-		return Response.json({ message: error.message }, { status: error.status });
+		return Response.json(
+			{ message: error.message },
+			{
+				status: error.status,
+				...(error.retryAfter
+					? { headers: { "Retry-After": error.retryAfter } }
+					: {}),
+			},
+		);
 	}
 	console.error("Tidepool request failed", error);
 	return Response.json(
