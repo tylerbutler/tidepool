@@ -174,6 +174,7 @@ only for the optional Erlang comparison. From the Tidepool repository root:
 
 ```sh
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
 pnpm typecheck
 pnpm check
 pnpm test
@@ -228,6 +229,7 @@ Run these from the repository root:
 | `pnpm build` | Gleam JavaScript build and dry-run core and both admin/token configurations |
 | `pnpm build:protocol` | Compile protocol; bootstrap pinned Gleam if absent on Linux x86_64 |
 | `pnpm build:admin` | Admin/token Worker dry-run bundle, without Gleam or R2 |
+| `pnpm build:app` | Bundle the SharedMap browser app into `dist/app` |
 | `pnpm build:tokens` | Standalone admin/token Worker dry-run bundle, without Gleam or direct storage bindings |
 | `pnpm run deploy` | Deploy core only; requires approval, cloud credentials, and a prior build |
 | `pnpm typecheck` | Strict TypeScript boundary check |
@@ -235,6 +237,7 @@ Run these from the repository root:
 | `pnpm test:protocol` | Assert protocol behavior on JavaScript |
 | `pnpm test:workers` | Build and run local platform/storage tests |
 | `pnpm test:acceptance` | Official SharedMap summary/reload test |
+| `pnpm test:app` | Browser collaboration test; run `pnpm build` first |
 | `pnpm measure:local` | Print a bounded loopback workload measurement |
 | `pnpm dev` | Persistent local Worker |
 | `pnpm sync:sqlite-template` | Update the self-contained SQLite-only deploy template from the main sources |
@@ -388,6 +391,37 @@ whole-summary upload, document deletion, and archival/garbage collection.
 It serializes summary preparation with document socket events, so slow R2
 work can delay edits. Live placement, platform limits under load, and cost need
 a separate deployment test.
+
+## SharedMap app
+
+The main admin deployment also serves a small Fluid Framework app at `/app/`.
+Create a document, copy its share link, and open the link in another window.
+The app can set and delete text values in a SharedMap. It uses the official
+Routerlicious driver and requests short-lived tokens from same-origin `/tokens`.
+It contains no signing key. The existing `/admin`, `/tokens`, and `/health`
+routes keep their behavior.
+
+`wrangler.admin.jsonc` sets `TIDEPOOL_URL`. The build embeds the app files in
+the Worker; do not add a Cloudflare Static Assets binding to this deployment.
+The Static Assets router does not pass `ctx.access` to the application Worker,
+which prevents its authenticated admin, app, and token routes from working.
+Set core's `ALLOWED_ORIGIN` to the admin/app origin. Keep `TENANT_ID` and
+`JWT_SECRET` equal in both Workers. The app uses the same Access authentication
+as the admin; all admitted users can edit documents in the signing tenant.
+The standalone `token-service/` template does not include the app.
+
+After approval, build and deploy both Workers:
+
+```sh
+pnpm build
+pnpm run deploy
+pnpm exec wrangler deploy --config wrangler.admin.jsonc
+```
+
+Install Chromium once with `pnpm exec playwright install chromium`.
+`pnpm test:app` checks creation, two-browser edits, deletion, and reload against
+local workerd. It uses anonymous token issuance only inside the local test;
+deployment stays in Access mode.
 
 ## Token service
 

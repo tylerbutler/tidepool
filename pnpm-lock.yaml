@@ -58,9 +58,15 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.2
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       miniflare:
         specifier: 4.20260730.0
         version: 4.20260730.0(@types/node@24.19.2)
+      playwright:
+        specifier: ^1.58.2
+        version: 1.64.0
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
@@ -1175,6 +1181,16 @@ packages:
   picomatch@4.0.7:
     resolution: {integrity: sha1-YxM2ADTMs2s9xh7L3/eBIfkP4h8=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/picomatch/-/picomatch-4.0.7.tgz}
     engines: {node: '>=12'}
+
+  playwright-core@1.64.0:
+    resolution: {integrity: sha512-T9r+MZkTECl2+oUcZ26YgZzTrYidTsIhYYkJix+6iDOymOb1FB2RLLSOxRGnZGv5DStt+aduIVbt+E8WygXYpg==, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/playwright-core/-/playwright-core-1.64.0.tgz}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.64.0:
+    resolution: {integrity: sha512-kVzTnYFYEyQ9RGzBjNCd2+yEqWmVbxl3AHPynv3qQ6JTjv4a+kwRcnqQwIpuP3NnrnIrE/Q6wWAIAvMfIE2/Yg==, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/playwright/-/playwright-1.64.0.tgz}
+    engines: {node: '>=20'}
+    hasBin: true
 
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha1-k+NYK8DlQmWG2dB7ee5A/IQd5K4=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/possible-typed-array-names/-/possible-typed-array-names-1.1.0.tgz}
@@ -2572,6 +2588,12 @@ snapshots:
   picocolors@1.1.1: {}
 
   picomatch@4.0.7: {}
+
+  playwright-core@1.64.0: {}
+
+  playwright@1.64.0:
+    dependencies:
+      playwright-core: 1.64.0
 
   possible-typed-array-names@1.1.0: {}
 

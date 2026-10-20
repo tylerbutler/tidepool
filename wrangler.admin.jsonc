@@ -12,6 +12,7 @@
   "vars": {
     "TOKEN_AUTH_MODE": "access",
     "TENANT_ID": "fluid",
+    "TIDEPOOL_URL": "https://tidepool.tyler-511.workers.dev",
     "TIDEPOOLS": [
       { "id": "default", "label": "Tidepool", "binding": "TIDEPOOL" }
     ],

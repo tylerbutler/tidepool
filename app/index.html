@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Shared map | Tidepool</title>
+		<link rel="stylesheet" href="/app/app.css">
+		<script type="module" src="/app/app.js"></script>
+	</head>
+	<body>
+		<a class="skip" href="#main">Skip to editor</a>
+		<header>
+			<a class="brand" href="/app/">Tidepool</a>
+			<nav aria-label="Main"><a href="/app/" aria-current="page">Shared map</a><a href="/admin">Admin</a></nav>
+			<a href="/cdn-cgi/access/logout">Sign out</a>
+		</header>
+		<main id="main">
+			<div class="heading"><h1>Shared map</h1><p id="status" role="status">Loading configuration...</p></div>
+			<p>Create a document, then open its link in another window. Changes appear in both.</p>
+			<p id="error" role="alert" hidden></p>
+			<section class="document" aria-labelledby="document-heading">
+				<h2 id="document-heading">Document</h2>
+				<div class="document-actions">
+					<button id="create" disabled>Create document</button>
+					<form id="open-form"><label for="document-id">Document ID</label><div class="inline"><input id="document-id" name="document" required maxlength="256" autocomplete="off"><button id="open" disabled>Open</button></div></form>
+				</div>
+				<div id="share" hidden><label for="share-url">Share this link</label><div class="inline"><input id="share-url" readonly><button id="copy" type="button">Copy link</button></div></div>
+			</section>
+			<section class="editor" aria-labelledby="entries-heading">
+				<div class="section-heading"><h2 id="entries-heading">Entries</h2><span id="entry-count">No document open</span></div>
+				<form id="entry-form"><fieldset id="entry-fields" disabled><div><label for="key">Key</label><input id="key" required maxlength="256" autocomplete="off"></div><div><label for="value">Value</label><input id="value" maxlength="4096" autocomplete="off"></div><button>Set value</button></fieldset></form>
+				<p class="hint">Values are text. Set an existing key to replace its value.</p>
+				<div class="table-scroll"><table><caption class="sr-only">Shared map entries</caption><thead><tr><th scope="col">Key</th><th scope="col">Value</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody id="entries"></tbody></table></div>
+				<p id="empty" class="empty">Create or open a document to start.</p>
+			</section>
+			<footer>Fluid Framework SharedMap on Tidepool. All users admitted by Access can edit documents in this tenant.</footer>
+		</main>
+	</body>
+</html>

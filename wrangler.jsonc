@@ -10,6 +10,9 @@
   "r2_buckets": [
     { "binding": "CONTENT", "bucket_name": "tidepool-content" }
   ],
-  "vars": { "TENANT_ID": "fluid" },
+  "vars": {
+    "TENANT_ID": "fluid",
+    "ALLOWED_ORIGIN": "https://tidepool-auth.tyler-511.workers.dev"
+  },
   "observability": { "enabled": true }
 }

@@ -14,6 +14,8 @@ export interface TokenEnv extends AdminBindings {
 	TENANT_ID?: string;
 	JWT_SECRET?: string;
 	ALLOWED_ORIGIN?: string;
+	APP_ASSETS?: Pick<Fetcher, "fetch">;
+	TIDEPOOL_URL?: string;
 }
 
 export async function accessUser(
@@ -85,9 +87,10 @@ async function route(
 		});
 	}
 	const admin = url.pathname === "/admin" || url.pathname.startsWith("/admin/");
-	if (!admin && url.pathname !== "/tokens")
+	const app = url.pathname === "/app" || url.pathname.startsWith("/app/");
+	if (!admin && !app && url.pathname !== "/tokens")
 		throw new HttpError(404, "Not found");
-	if (!admin && request.method !== "POST")
+	if (!admin && !app && request.method !== "POST")
 		throw new HttpError(405, "Use POST to request a token");
 	const userId =
 		mode === "anonymous"
@@ -95,6 +98,37 @@ async function route(
 			: await accessUser(env, ctx);
 	if (typeof userId !== "string") return userId;
 	if (admin) return adminResponse(request, env);
+	if (app) {
+		if (!env.APP_ASSETS) throw new HttpError(404, "App is not configured");
+		if (request.method !== "GET" && request.method !== "HEAD")
+			throw new HttpError(405, "Use GET to open the app");
+		if (!env.TIDEPOOL_URL || !env.TENANT_ID)
+			throw new HttpError(503, "TIDEPOOL_URL and TENANT_ID must be configured");
+		const core = new URL(env.TIDEPOOL_URL);
+		if (
+			core.protocol !== "https:" &&
+			core.hostname !== "127.0.0.1" &&
+			core.hostname !== "localhost"
+		)
+			throw new HttpError(503, "TIDEPOOL_URL must use HTTPS");
+		if (url.pathname === "/app/config.json") {
+			return Response.json({ endpoint: core.origin, tenantId: env.TENANT_ID });
+		}
+		if (url.pathname === "/app")
+			return Response.redirect(`${url.origin}/app/`, 302);
+		// The asset directory is rooted at /; keep the public app under /app/.
+		url.pathname = url.pathname.slice("/app".length);
+		const asset = await env.APP_ASSETS.fetch(new Request(url, request));
+		const response = new Response(asset.body, asset);
+		const socketOrigin = core.origin.replace(/^http/, "ws");
+		response.headers.set(
+			"Content-Security-Policy",
+			`default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' ${core.origin} ${socketOrigin}; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`,
+		);
+		response.headers.set("X-Content-Type-Options", "nosniff");
+		response.headers.set("Referrer-Policy", "no-referrer");
+		return response;
+	}
 	const signing = signingConfiguration(env);
 	if (
 		request.headers.get("Content-Type")?.split(";")[0]?.trim().toLowerCase() !==

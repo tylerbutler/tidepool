@@ -2,7 +2,8 @@ import { expect, it, vi } from "vitest";
 import { verify } from "../src/auth.js";
 import { integer, record, text } from "../src/common.js";
 import type { ConnectorClient } from "../src/connector.js";
-import tokenWorker, { type TokenEnv } from "../src/token-worker.js";
+import appWorker from "../src/token-worker.js";
+import tokenWorker, { type TokenEnv } from "../token-service/src/worker.js";
 
 const env = {
 	TENANT_ID: "fluid",
@@ -223,6 +224,9 @@ it.each([
 	"/admin/",
 	"/admin/style.css",
 	"/admin/unknown",
+	"/app/",
+	"/app/app.js",
+	"/app/config.json",
 ])("protects %s with the token service's verified Access identity", async (path) => {
 	const input = new Request(`https://issuer.example${path}`, {
 		headers: { "Cf-Access-Authenticated-User-Email": "forged@example.test" },
@@ -241,6 +245,65 @@ it.each([
 	const response = await tokenWorker.fetch(input, env, verified);
 	expect(response.status).not.toBe(403);
 	expect(verified.access.getIdentity).toHaveBeenCalledOnce();
+});
+
+it("authenticates app assets and exposes only public connection settings", async () => {
+	const fetchAsset = vi.fn<Fetcher["fetch"]>(async (input) => {
+		const request = new Request(input);
+		expect(new URL(request.url).pathname).toBe("/app.js");
+		return new Response("export {};", {
+			headers: { "Content-Type": "text/javascript" },
+		});
+	});
+	const settings = {
+		...env,
+		TIDEPOOL_URL: "https://core.example",
+		APP_ASSETS: { fetch: fetchAsset },
+	} satisfies TokenEnv;
+	const config = await tokenWorker.fetch(
+		new Request("https://issuer.example/app/config.json"),
+		settings,
+		access(),
+	);
+	expect(await config.json()).toEqual({
+		endpoint: "https://core.example",
+		tenantId: "fluid",
+	});
+	expect(config.headers.get("Cache-Control")).toBe("no-store");
+	expect(fetchAsset).not.toHaveBeenCalled();
+	const response = await tokenWorker.fetch(
+		new Request("https://issuer.example/app/app.js"),
+		settings,
+		access(),
+	);
+	expect(response.status).toBe(200);
+	expect(response.headers.get("Content-Security-Policy")).toContain(
+		"connect-src 'self' https://core.example wss://core.example",
+	);
+	expect(fetchAsset).toHaveBeenCalledOnce();
+	const denied = await tokenWorker.fetch(
+		new Request("https://issuer.example/app/app.js"),
+		settings,
+		{},
+	);
+	expect(denied.status).toBe(403);
+	expect(fetchAsset).toHaveBeenCalledOnce();
+});
+
+it.each([
+	"/app/",
+	"/app/app.js",
+	"/app/app.css",
+	"/app/config.json",
+])("serves bundled %s through the direct Worker's verified Access context", async (path) => {
+	const input = new Request(`https://issuer.example${path}`);
+	const settings = { ...env, TIDEPOOL_URL: "https://core.example" };
+	expect((await appWorker.fetch(input, settings, {})).status).toBe(403);
+	const ctx = access();
+	const response = await appWorker.fetch(input, settings, ctx);
+	expect(response.status).toBe(200);
+	expect(ctx.access.getIdentity).toHaveBeenCalledOnce();
+	expect(response.headers.get("Cache-Control")).toBe("no-store");
 });
 
 it("authenticates admin-only deployments without signing credentials before calling any connector", async () => {
