@@ -181,10 +181,16 @@ pnpm test
 ```
 
 `pnpm test` runs the Gleam assertions, builds a Worker with Wrangler's dry-run
-mode, runs platform/storage tests, then runs the official Fluid container test.
+mode, runs platform/storage tests, then runs the official Fluid container tests
+and Chromium browser tests.
 The tests use the published Fluid packages and start local workerd themselves.
 No external server or opt-in environment variable is necessary. An explicit
 acceptance run fails if its bundle/runtime is missing.
+
+The browser tests use anonymous token issuance in local workerd. Access unit
+tests supply a mocked verified context. Neither checks Cloudflare's live login
+flow or delivery of `ctx.access` to a deployed Worker. Check those paths after
+deployment with a signed-in browser.
 
 To start a local server, create the ignored secret file at the repository root:
 
@@ -555,6 +561,25 @@ browser restrictions; use a same-origin token route when integrating a browser
 app. The document Worker closes expired sockets, so clients must obtain fresh
 tokens when they reconnect.
 
+### Troubleshooting Access authentication
+
+If sign-in succeeds but `/app/`, `/admin`, or `/tokens` returns
+`{"message":"Cloudflare Access authentication required"}`, the Worker either
+did not receive `ctx.access` or received an audience that does not match
+`ACCESS_AUDIENCE`.
+
+Check the Access application for the requested hostname and compare its AUD
+tag with `ACCESS_AUDIENCE`. Invoke the Worker through that protected hostname.
+Service bindings and Cloudflare's Static Assets router do not forward
+`ctx.access` to the application Worker, even when Access accepts the login.
+See [Cloudflare's context limitations](https://developers.cloudflare.com/workers/configuration/cloudflare-access/#ctxaccess-limitations).
+
+For the main admin/app deployment, keep `assets` out of
+`wrangler.admin.jsonc`. Run `pnpm build:admin` to embed the app files in the
+Worker, then redeploy after approval. Keep Access mode and the verified
+identity check; accepting caller-supplied headers or enabling anonymous mode
+does not repair the missing context.
+
 ### Deploying the admin/token Worker
 
 Deployment requires approval and the intended Cloudflare account. It does not
@@ -744,6 +769,7 @@ on the live service before using it for retained data.
 | --- | --- |
 | Document Worker | `https://tidepool.tyler-511.workers.dev` |
 | Access-protected admin/token Worker | `https://tidepool-auth.tyler-511.workers.dev` |
+| SharedMap app (same Access application) | `https://tidepool-auth.tyler-511.workers.dev/app/` |
 | Admin site (same Access application) | `https://tidepool-auth.tyler-511.workers.dev/admin` |
 
 Both Workers use tenant `fluid` and the same signing key. The document Worker
@@ -754,16 +780,22 @@ admission require document JWTs.
 The core connector and service-binding admin were deployed on 2026-10-19,
 with the core deployed first. The admin has one configured connection to
 `tidepool`. Core `/health` returns 200, and the public `/connector` path returns
-404. Anonymous requests to `/admin`, its stylesheet, `/tokens`, and the admin
-`/health` redirect to the existing Access sign-in. Signed-in document browsing
-remains unverified on the live service; no Access users or policies were changed
-for this deployment.
+404. Anonymous requests to `/app/`, its script and configuration, `/admin`,
+`/tokens`, and the admin `/health` redirect to the existing Access sign-in.
+No Access users or policies changed for this deployment.
+
+The SharedMap app deployment on 2026-10-19 exposed the Static Assets router's
+failure to forward `ctx.access`. The corrected deployment serves bundled app
+files from the Worker. After that change, the operator confirmed that `/admin`
+loads and reported successful signed-in use of `/app/`. This is a manual smoke
+check of the Access-authenticated app and token path, not an automated cloud
+acceptance run or a check of signed-in document inspection.
 
 The initial cloud deployment passed a bounded official-client SharedMap
 collaboration and fresh-client reload check, plus an R2 blob upload/read.
 One small canary document remains stored; the service has no document-delete
-API. Access-authenticated token issuance, cloud hibernation/restarts, sustained
-load, and billing remain unverified.
+API. Automated Access login, token renewal on reconnect, cloud
+hibernation/restarts, sustained load, and billing remain unverified.
 
 ### Cleanup
 

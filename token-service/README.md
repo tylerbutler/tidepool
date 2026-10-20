@@ -57,6 +57,16 @@ context. Forged Access headers cannot authenticate a caller. All admitted users
 can inspect all configured connections and request tokens for any document in
 the signing tenant.
 
+Invoke this Worker through its Access-protected hostname. Service bindings and
+Cloudflare's Static Assets router do not forward `ctx.access` to the application
+Worker. Do not add an `assets` configuration to this deployment.
+
+If sign-in succeeds but the Worker returns
+`{"message":"Cloudflare Access authentication required"}`, check for an
+intermediate router and confirm that `ACCESS_AUDIENCE` matches the Access
+application's AUD tag. Keep Access and the identity check enabled.
+See [Access troubleshooting](https://github.com/tylerbutler/tidepool#troubleshooting-access-authentication).
+
 **Anonymous mode is for disposable public demos. Anyone can obtain tokens to
 create, read, edit, and summarize any document in the signing tenant. The admin
 also exposes document IDs and metadata for every configured connection.**
